@@ -161,29 +161,39 @@
         let particles = [];
         const MAX_PARTICLES = 2500;
 
+        // ★ 핵심 수정 1: 재료 ID를 명확한 상수로 정의 (0~16, Uint8Array 범위 내)
+        const M = {
+            EMPTY: 0, TNT: 1, C4: 2, AA: 3, U235: 4, PU239: 5,
+            FIRE: 6, EXPLOSION: 7, SMOKE: 8, GROUND: 9,
+            FM: 10, NG: 11, CERAMIC: 12, DIAMOND: 13, WOOD: 14, WATER: 15, COAL: 16
+        };
+
+        // 이름 -> ID 매핑
         const MATERIALS = {
-            'EMPTY': 0, 'TNT': 1, 'C4': 2, 'AA': 3, 'U235': 4, 'PU239': 5,
-            'FIRE': 6, 'EXPLOSION': 7, 'SMOKE': 8, 'GROUND': 9,
-            'FM': 10, 'NG': 11, 'CERAMIC': 12, 'DIAMOND': 13, 'WOOD': 14, 'WATER': 15, 'COAL' : 16
+            'EMPTY': M.EMPTY, 'TNT': M.TNT, 'C4': M.C4, 'AA': M.AA,
+            'U235': M.U235, 'PU239': M.PU239, 'FIRE': M.FIRE, 'EXPLOSION': M.EXPLOSION,
+            'SMOKE': M.SMOKE, 'GROUND': M.GROUND, 'FM': M.FM, 'NG': M.NG,
+            'CERAMIC': M.CERAMIC, 'DIAMOND': M.DIAMOND, 'WOOD': M.WOOD,
+            'WATER': M.WATER, 'COAL': M.COAL
         };
 
         const PROPS = {
-            [MATERIALS.TNT]: { color: '#d32f2f', type: 'solid', sensitivity: 0.4, power: 18, fireChance: 0.8 },
-            [MATERIALS.C4]: { color: '#e0e0e0', type: 'solid', sensitivity: 0.15, power: 30, fireChance: 0.5 },
-            [MATERIALS.AA]: { color: '#a3ff00', type: 'powder', sensitivity: 0.98, power: 15, fireChance: 0.99 },
-            [MATERIALS.FM]: { color: '#ffffff', type: 'powder', sensitivity: 0.92, power: 20, fireChance: 0.95 },
-            [MATERIALS.NG]: { color: '#ffeb3b', type: 'liquid', sensitivity: 1.0, power: 45, fireChance: 1.0, viscosity: 2 },
-            [MATERIALS.U235]: { color: '#ccff00', type: 'solid', critical: 180, power: 100 },
-            [MATERIALS.PU239]: { color: '#ff00ff', type: 'solid', critical: 70, power: 150 },
-            [MATERIALS.FIRE]: { color: '#ffcc00', type: 'energy' },
-            [MATERIALS.EXPLOSION]: { color: '#ffdd00', type: 'energy' },
-            [MATERIALS.SMOKE]: { color: '#444444', type: 'gas' },
-            [MATERIALS.GROUND]: { color: '#C2B280', type: 'static', indestructible: true },
-            [MATERIALS.CERAMIC]: { color: '#6d4c41', type: 'static' },
-            [MATERIALS.DIAMOND]: { color: '#b3e5fc', type: 'static', indestructible: true },
-            [MATERIALS.WOOD]: { color: '#8d6e63', type: 'static', flammability: 0.05 },
-            [MATERIALS.WATER]: { color: '#2196f3', type: 'liquid', viscosity: 6 },
-            [MATERIALS.COAL]: { color: '#222222', type: 'solid', flammability: 0.08 }
+            [M.TNT]:       { color: '#d32f2f', type: 'solid',  sensitivity: 0.4,  power: 18,  fireChance: 0.8 },
+            [M.C4]:        { color: '#e0e0e0', type: 'solid',  sensitivity: 0.15, power: 30,  fireChance: 0.5 },
+            [M.AA]:        { color: '#a3ff00', type: 'powder', sensitivity: 0.98, power: 15,  fireChance: 0.99 },
+            [M.FM]:        { color: '#ffffff', type: 'powder', sensitivity: 0.92, power: 20,  fireChance: 0.95 },
+            [M.NG]:        { color: '#ffeb3b', type: 'liquid', sensitivity: 1.0,  power: 45,  fireChance: 1.0, viscosity: 2 },
+            [M.U235]:      { color: '#ccff00', type: 'solid',  critical: 180, power: 100 },
+            [M.PU239]:     { color: '#ff00ff', type: 'solid',  critical: 70,  power: 150 },
+            [M.FIRE]:      { color: '#ffcc00', type: 'energy' },
+            [M.EXPLOSION]: { color: '#ffdd00', type: 'energy' },
+            [M.SMOKE]:     { color: '#444444', type: 'gas' },
+            [M.GROUND]:    { color: '#C2B280', type: 'static', indestructible: true },
+            [M.CERAMIC]:   { color: '#6d4c41', type: 'static' },
+            [M.DIAMOND]:   { color: '#b3e5fc', type: 'static', indestructible: true },
+            [M.WOOD]:      { color: '#8d6e63', type: 'static', flammability: 0.05 },
+            [M.WATER]:     { color: '#2196f3', type: 'liquid', viscosity: 6 },
+            [M.COAL]:      { color: '#222222', type: 'solid',  flammability: 0.08 }
         };
 
         function init() {
@@ -191,12 +201,14 @@
             height = canvas.height = window.innerHeight;
             cols = Math.floor(width / SCALE);
             rows = Math.floor(height / SCALE);
-            grid = new Int8Array(cols * rows).fill(0);
-            
+
+            // ★ 핵심 수정 2: Int8Array(-128~127) → Uint8Array(0~255) 로 변경
+            grid = new Uint8Array(cols * rows);
+
             const groundStart = rows - Math.floor(rows * 0.1);
-            for(let y = groundStart; y < rows; y++) {
-                for(let x = 0; x < cols; x++) {
-                    grid[getIndex(x, y)] = MATERIALS.GROUND;
+            for (let y = groundStart; y < rows; y++) {
+                for (let x = 0; x < cols; x++) {
+                    grid[getIndex(x, y)] = M.GROUND;
                 }
             }
         }
@@ -209,12 +221,12 @@
         function setTool(tool, btn) {
             currentTool = tool;
             document.querySelectorAll('button').forEach(b => b.classList.remove('active'));
-            if(btn) btn.classList.add('active');
+            if (btn) btn.classList.add('active');
         }
 
         function clearMap() {
-            grid.fill(0);
             particles = [];
+            nukeEffect = null;
             init();
         }
 
@@ -240,9 +252,9 @@
                 const idx = getIndex(gx, gy);
                 if (idx !== -1) {
                     const mat = grid[idx];
-                    if (mat > 0 && !PROPS[mat].indestructible) {
+                    if (mat > 0 && PROPS[mat] && !PROPS[mat].indestructible) {
                         if (this.isHighEnergy || (Math.random() < 0.5 && Math.abs(this.vx) + Math.abs(this.vy) > 8)) {
-                            grid[idx] = MATERIALS.EMPTY;
+                            grid[idx] = M.EMPTY;
                         }
                     }
                 }
@@ -260,9 +272,10 @@
                 ctx.save();
                 ctx.translate(this.x, this.y);
                 ctx.rotate(this.angle);
-                ctx.fillRect(-this.size/2, -this.size/2, this.size, this.size);
+                ctx.fillRect(-this.size / 2, -this.size / 2, this.size, this.size);
                 ctx.restore();
                 ctx.shadowBlur = 0;
+                ctx.globalAlpha = 1;
             }
         }
 
@@ -275,15 +288,14 @@
 
             for (let i = -radius; i <= radius; i++) {
                 for (let j = -radius; j <= radius; j++) {
-                    if (Math.sqrt(i*i + j*j) <= radius) {
+                    if (Math.sqrt(i * i + j * j) <= radius) {
                         const idx = getIndex(mouseX + i, mouseY + j);
                         if (idx !== -1) {
                             const targetMat = grid[idx];
                             if (currentTool === 'EMPTY') {
-                                if (targetMat !== MATERIALS.GROUND) grid[idx] = MATERIALS.EMPTY;
+                                if (targetMat !== M.GROUND) grid[idx] = M.EMPTY;
                             } else {
-                                // 빈 공간(EMPTY)에만 설치 가능
-                                if (targetMat === MATERIALS.EMPTY) grid[idx] = MATERIALS[currentTool];
+                                if (targetMat === M.EMPTY) grid[idx] = MATERIALS[currentTool];
                             }
                         }
                     }
@@ -295,6 +307,8 @@
         window.addEventListener('mouseup', () => isMouseDown = false);
         window.addEventListener('mousemove', handleInput);
         window.addEventListener('resize', init);
+
+        let nukeEffect = null;
 
         function triggerNuclear(x, y) {
             nukeOverlay.style.transition = 'none';
@@ -311,102 +325,150 @@
             nukeEffect = { x: x * SCALE, y: y * SCALE, size: 0, alpha: 1 };
         }
 
-        let nukeEffect = null;
-
         function update() {
-            let nextGrid = new Int8Array(grid);
-            let nuclearCounter = { [MATERIALS.U235]: 0, [MATERIALS.PU239]: 0 };
-            let nuclearPos = { [MATERIALS.U235]: {x:0, y:0}, [MATERIALS.PU239]: {x:0, y:0} };
+            // ★ 핵심 수정 3: nextGrid도 Uint8Array로 생성
+            const nextGrid = new Uint8Array(grid);
+
+            let nuclearCounter = { [M.U235]: 0, [M.PU239]: 0 };
+            let nuclearPos = { [M.U235]: { x: 0, y: 0 }, [M.PU239]: { x: 0, y: 0 } };
 
             for (let y = rows - 1; y >= 0; y--) {
                 for (let x = 0; x < cols; x++) {
                     const i = getIndex(x, y);
                     const mat = grid[i];
-                    if (mat === MATERIALS.EMPTY) continue;
-                    const props = PROPS[mat];
+                    if (mat === M.EMPTY) continue;
 
+                    // ★ 핵심 수정 4: PROPS 유효성 검사 추가 (undefined 접근 방지)
+                    const props = PROPS[mat];
+                    if (!props) continue;
+
+                    // 중력: 가루/액체
                     if (props.type === 'powder' || props.type === 'liquid') {
                         const down = getIndex(x, y + 1);
-                        if (down !== -1 && nextGrid[down] === MATERIALS.EMPTY) {
-                            nextGrid[i] = MATERIALS.EMPTY; nextGrid[down] = mat;
+                        if (down !== -1 && nextGrid[down] === M.EMPTY) {
+                            nextGrid[i] = M.EMPTY; nextGrid[down] = mat;
                         } else {
                             const dir = Math.random() > 0.5 ? 1 : -1;
                             const side = getIndex(x + dir, y + 1);
-                            if (side !== -1 && nextGrid[side] === MATERIALS.EMPTY) {
-                                nextGrid[i] = MATERIALS.EMPTY; nextGrid[side] = mat;
+                            if (side !== -1 && nextGrid[side] === M.EMPTY) {
+                                nextGrid[i] = M.EMPTY; nextGrid[side] = mat;
                             } else if (props.type === 'liquid') {
                                 const hSide = getIndex(x + dir, y);
-                                if (hSide !== -1 && nextGrid[hSide] === MATERIALS.EMPTY) {
-                                    nextGrid[i] = MATERIALS.EMPTY; nextGrid[hSide] = mat;
+                                if (hSide !== -1 && nextGrid[hSide] === M.EMPTY) {
+                                    nextGrid[i] = M.EMPTY; nextGrid[hSide] = mat;
                                 }
                             }
                         }
                     }
 
-                    if (mat === MATERIALS.EXPLOSION) {
-                        const radius = 5; 
-                        for(let nx = -radius; nx <= radius; nx++) {
-                            for(let ny = -radius; ny <= radius; ny++) {
+                    // 폭발 처리
+                    if (mat === M.EXPLOSION) {
+                        const radius = 5;
+                        for (let nx = -radius; nx <= radius; nx++) {
+                            for (let ny = -radius; ny <= radius; ny++) {
                                 const nidx = getIndex(x + nx, y + ny);
                                 if (nidx === -1) continue;
+                                // ★ 핵심 수정 5: nextGrid가 아닌 grid 기준으로 읽어서 판단
                                 const t = grid[nidx];
-                                if (t > 0 && !PROPS[t].indestructible) {
-                                    if (Math.random() < 0.4) nextGrid[nidx] = MATERIALS.EMPTY;
-                                    if (t === MATERIALS.WOOD || t === MATERIALS.COAL) nextGrid[nidx] = MATERIALS.FIRE;
+                                if (t === M.EMPTY) continue;
+                                const tp = PROPS[t];
+                                if (!tp) continue;
+                                if (tp.indestructible) continue;
+
+                                if (Math.random() < 0.4) {
+                                    nextGrid[nidx] = M.EMPTY;
+                                }
+                                // 나무/석탄은 불로 전환 (단, 이미 EMPTY로 설정됐을 수 있으니 조건 확인)
+                                if ((t === M.WOOD || t === M.COAL) && nextGrid[nidx] !== M.EMPTY) {
+                                    nextGrid[nidx] = M.FIRE;
+                                }
+                                // 폭발성 물질 연쇄 반응
+                                if (tp.sensitivity && Math.random() < tp.fireChance && nextGrid[nidx] !== M.EMPTY) {
+                                    nextGrid[nidx] = M.EXPLOSION;
                                 }
                             }
                         }
                         if (particles.length < MAX_PARTICLES && Math.random() < 0.3) {
-                            particles.push(new Debris(x*SCALE, y*SCALE, (Math.random()-0.5)*20, (Math.random()-0.5)*20, '#ffcc00'));
+                            particles.push(new Debris(x * SCALE, y * SCALE, (Math.random() - 0.5) * 20, (Math.random() - 0.5) * 20, '#ffcc00'));
                         }
-                        nextGrid[i] = Math.random() < 0.5 ? MATERIALS.SMOKE : MATERIALS.EMPTY;
+                        nextGrid[i] = Math.random() < 0.5 ? M.SMOKE : M.EMPTY;
                     }
 
-                    if (mat === MATERIALS.FIRE) {
+                    // 불 처리
+                    if (mat === M.FIRE) {
                         const upIdx = getIndex(x + (Math.floor(Math.random() * 3) - 1), y - 1);
-                        if (upIdx !== -1 && nextGrid[upIdx] === MATERIALS.EMPTY) {
-                            nextGrid[i] = MATERIALS.EMPTY; nextGrid[upIdx] = MATERIALS.FIRE;
+                        if (upIdx !== -1 && nextGrid[upIdx] === M.EMPTY) {
+                            nextGrid[i] = M.EMPTY;
+                            nextGrid[upIdx] = M.FIRE;
                         }
-                        const neighbors = [getIndex(x+1, y), getIndex(x-1, y), getIndex(x, y+1), getIndex(x, y-1)];
-                        for(let nIdx of neighbors) {
-                            if(nIdx === -1) continue;
+                        const neighbors = [
+                            getIndex(x + 1, y), getIndex(x - 1, y),
+                            getIndex(x, y + 1), getIndex(x, y - 1)
+                        ];
+                        for (let nIdx of neighbors) {
+                            if (nIdx === -1) continue;
                             const target = grid[nIdx];
-                            if(target === MATERIALS.WATER) {
-                                nextGrid[i] = MATERIALS.SMOKE; nextGrid[nIdx] = MATERIALS.EMPTY;
-                            } else if(PROPS[target]?.flammability && Math.random() < PROPS[target].flammability) {
-                                nextGrid[nIdx] = MATERIALS.FIRE;
-                            } else if(PROPS[target]?.sensitivity && Math.random() < PROPS[target].fireChance) {
-                                nextGrid[nIdx] = MATERIALS.EXPLOSION;
+                            if (target === M.EMPTY) continue;
+                            const tp = PROPS[target];
+                            if (!tp) continue;
+
+                            if (target === M.WATER) {
+                                nextGrid[i] = M.SMOKE;
+                                nextGrid[nIdx] = M.EMPTY;
+                            } else if (tp.flammability && Math.random() < tp.flammability) {
+                                nextGrid[nIdx] = M.FIRE;
+                            } else if (tp.sensitivity && Math.random() < tp.fireChance) {
+                                nextGrid[nIdx] = M.EXPLOSION;
                             }
                         }
-                        if (Math.random() < 0.15) nextGrid[i] = MATERIALS.SMOKE;
+                        if (Math.random() < 0.15) nextGrid[i] = M.SMOKE;
                     }
 
-                    if (mat === MATERIALS.SMOKE) {
+                    // 연기 처리
+                    if (mat === M.SMOKE) {
                         const up = getIndex(x + (Math.floor(Math.random() * 3) - 1), y - 1);
-                        if (up !== -1 && nextGrid[up] === MATERIALS.EMPTY) {
-                            nextGrid[i] = MATERIALS.EMPTY; nextGrid[up] = mat;
-                        } else if (Math.random() < 0.03) nextGrid[i] = MATERIALS.EMPTY;
+                        if (up !== -1 && nextGrid[up] === M.EMPTY) {
+                            nextGrid[i] = M.EMPTY; nextGrid[up] = mat;
+                        } else if (Math.random() < 0.03) {
+                            nextGrid[i] = M.EMPTY;
+                        }
                     }
 
-                    if (mat === MATERIALS.U235 || mat === MATERIALS.PU239) {
-                        nuclearCounter[mat]++; nuclearPos[mat].x += x; nuclearPos[mat].y += y;
+                    // 핵물질 카운트
+                    if (mat === M.U235 || mat === M.PU239) {
+                        nuclearCounter[mat]++;
+                        nuclearPos[mat].x += x;
+                        nuclearPos[mat].y += y;
                     }
                 }
             }
 
-            for (let type of [MATERIALS.U235, MATERIALS.PU239]) {
+            // 핵 임계 질량 판정
+            let nukeTriggered = false;
+            for (let type of [M.U235, M.PU239]) {
                 if (nuclearCounter[type] >= PROPS[type].critical) {
-                    triggerNuclear(Math.floor(nuclearPos[type].x / nuclearCounter[type]), Math.floor(nuclearPos[type].y / nuclearCounter[type]));
-                    for(let k=0; k<nextGrid.length; k++) {
-                        if(nextGrid[k] !== MATERIALS.GROUND && nextGrid[k] !== MATERIALS.DIAMOND) nextGrid[k] = 0;
+                    const cx = Math.floor(nuclearPos[type].x / nuclearCounter[type]);
+                    const cy = Math.floor(nuclearPos[type].y / nuclearCounter[type]);
+                    triggerNuclear(cx, cy);
+
+                    // ★ 핵심 수정 6: 핵폭발 후 안전하게 맵 클리어
+                    for (let k = 0; k < nextGrid.length; k++) {
+                        const v = nextGrid[k];
+                        if (v !== M.GROUND && v !== M.DIAMOND) {
+                            nextGrid[k] = M.EMPTY;
+                        }
                     }
+                    nukeTriggered = true;
                     break;
                 }
             }
 
-            massDisplay.innerText = (nuclearCounter[MATERIALS.U235] + nuclearCounter[MATERIALS.PU239]).toString();
-            grid = nextGrid;
+            massDisplay.innerText = (nuclearCounter[M.U235] + nuclearCounter[M.PU239]).toString();
+
+            // ★ 핵심 수정 7: grid 교체를 안전하게 set으로 복사
+            grid.set(nextGrid);
+
+            // 파티클 업데이트
             for (let j = particles.length - 1; j >= 0; j--) {
                 particles[j].update();
                 if (particles[j].life <= 0) particles.splice(j, 1);
@@ -414,42 +476,62 @@
         }
 
         function draw() {
-            ctx.fillStyle = '#87CEEB'; 
+            ctx.fillStyle = '#87CEEB';
             ctx.fillRect(0, 0, width, height);
 
             for (let i = 0; i < grid.length; i++) {
                 const mat = grid[i];
-                if (mat !== MATERIALS.EMPTY) {
-                    const x = (i % cols) * SCALE;
-                    const y = Math.floor(i / cols) * SCALE;
-                    ctx.fillStyle = PROPS[mat].color;
-                    ctx.fillRect(x, y, SCALE, SCALE);
-                    if (mat === MATERIALS.FIRE || mat === MATERIALS.EXPLOSION) {
+                if (mat === M.EMPTY) continue;
+                const props = PROPS[mat];
+                if (!props) continue;
+
+                const x = (i % cols) * SCALE;
+                const y = Math.floor(i / cols) * SCALE;
+                ctx.fillStyle = props.color;
+                ctx.fillRect(x, y, SCALE, SCALE);
+
+                if (mat === M.FIRE || mat === M.EXPLOSION) {
+                    if (Math.random() > 0.8) {
                         ctx.fillStyle = '#fff';
-                        if(Math.random() > 0.8) ctx.fillRect(x, y, SCALE, SCALE);
+                        ctx.fillRect(x, y, SCALE, SCALE);
                     }
                 }
             }
 
+            ctx.globalAlpha = 1;
             for (let p of particles) p.draw();
+            ctx.globalAlpha = 1;
 
             if (nukeEffect) {
                 ctx.save();
                 ctx.globalAlpha = nukeEffect.alpha;
-                const grad = ctx.createRadialGradient(nukeEffect.x, nukeEffect.y, 0, nukeEffect.x, nukeEffect.y, nukeEffect.size);
-                grad.addColorStop(0, '#fff'); grad.addColorStop(0.4, '#ffaa00'); grad.addColorStop(1, 'transparent');
+                const grad = ctx.createRadialGradient(
+                    nukeEffect.x, nukeEffect.y, 0,
+                    nukeEffect.x, nukeEffect.y, nukeEffect.size
+                );
+                grad.addColorStop(0, '#fff');
+                grad.addColorStop(0.4, '#ffaa00');
+                grad.addColorStop(1, 'transparent');
                 ctx.fillStyle = grad;
-                ctx.beginPath(); ctx.arc(nukeEffect.x, nukeEffect.y, nukeEffect.size, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath();
+                ctx.arc(nukeEffect.x, nukeEffect.y, nukeEffect.size, 0, Math.PI * 2);
+                ctx.fill();
                 ctx.restore();
-                nukeEffect.size += 30; nukeEffect.alpha -= 0.015;
+
+                nukeEffect.size += 30;
+                nukeEffect.alpha -= 0.015;
                 if (nukeEffect.alpha <= 0) nukeEffect = null;
             }
         }
 
-        function loop() { 
-            update(); draw(); requestAnimationFrame(loop); 
+        function loop() {
+            update();
+            draw();
+            requestAnimationFrame(loop);
         }
-        init(); loop();
+
+        init();
+        loop();
     </script>
 </body>
 </html>
