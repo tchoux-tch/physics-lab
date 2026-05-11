@@ -1,2772 +1,837 @@
+<!-- 이걸 굳이 뜯어보신 이유가 뭐죠? -조우찬- -->
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ko"> 
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Combined Simulator - Nuclear & CircuitLab</title>
-  <style>
-    :root {
-      --bg: #0a0e1a;
-      --panel: #111827;
-      --panel2: #151d35;
-      --border: #1e2d4a;
-      --text: #e2e8f0;
-      --text2: #94a3b8;
-      --accent: #00d4ff;
-      --accent2: #7c3aed;
-      --green: #00ff88;
-      --amber: #ffb800;
-      --red: #ff3b5c;
-      --nuke-bg: #87CEEB;
-      --nuke-panel: rgba(15,15,20,0.95);
-      --nuke-accent: #ffcc00;
-      --nuke-dark: #222;
-    }
-
-    * { box-sizing: border-box; }
-    html, body {
-      margin: 0;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-
-    .app-shell {
-      width: 100%;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .mode-bar {
-      height: 52px;
-      background: var(--panel);
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      padding: 0 12px;
-      gap: 8px;
-      flex-shrink: 0;
-    }
-
-    .mode-title {
-      font-weight: 700;
-      color: var(--accent);
-      margin-right: 8px;
-      white-space: nowrap;
-    }
-
-    .mode-btn {
-      background: transparent;
-      color: var(--text2);
-      border: 1px solid transparent;
-      border-radius: 8px;
-      padding: 8px 12px;
-      cursor: pointer;
-      font-size: 14px;
-    }
-
-    .mode-btn.active {
-      background: rgba(0, 212, 255, 0.12);
-      border-color: rgba(0, 212, 255, 0.3);
-      color: var(--accent);
-    }
-
-    .mode-btn:hover {
-      border-color: var(--border);
-      background: rgba(255,255,255,0.03);
-      color: var(--text);
-    }
-
-    .mode-fill { flex: 1; }
-
-    .mode-wrap {
-      width: 100%;
-      height: calc(100% - 52px);
-      position: relative;
-    }
-
-    .mode-panel {
-      display: none;
-      width: 100%;
-      height: 100%;
-      position: relative;
-    }
-
-    .mode-panel.active {
-      display: block;
-    }
-
-    /* =========================
-       NUCLEAR MODE
-       ========================= */
-    #nuclear-panel {
-      background: var(--nuke-bg);
-      color: #fff;
-      user-select: none;
-      overflow: hidden;
-    }
-
-    #nuclear-panel canvas {
-      display: block;
-      cursor: crosshair;
-    }
-
-    #nuke-overlay {
-      position: fixed;
-      inset: 0;
-      background: #fff;
-      opacity: 0;
-      pointer-events: none;
-      z-index: 200;
-    }
-
-    .nuclear-interface {
-      position: absolute;
-      top: 20px;
-      left: 20px;
-      width: 320px;
-      max-height: 85vh;
-      background: var(--nuke-panel);
-      padding: 20px;
-      border: 1px solid #444;
-      border-radius: 6px;
-      box-shadow: 0 0 20px rgba(0,0,0,0.8);
-      z-index: 100;
-      overflow-y: auto;
-    }
-
-    .nuclear-interface::-webkit-scrollbar { width: 6px; }
-    .nuclear-interface::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
-
-    .nuclear-interface h1 {
-      font-size: 1.05rem;
-      margin: 0 0 15px 0;
-      color: var(--nuke-accent);
-      border-bottom: 1px solid #444;
-      padding-bottom: 5px;
-    }
-
-    .tool-group { margin-bottom: 15px; }
-    .label {
-      font-size: 0.75rem;
-      color: #888;
-      margin-bottom: 5px;
-      text-transform: uppercase;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 5px;
-    }
-
-    .nuclear-interface button {
-      background: #222;
-      border: 1px solid #444;
-      color: #ccc;
-      padding: 8px;
-      cursor: pointer;
-      font-size: 0.8rem;
-      transition: 0.2s;
-      text-align: center;
-    }
-
-    .nuclear-interface button:hover {
-      background: #333;
-      color: #fff;
-    }
-
-    .nuclear-interface button.active {
-      background: var(--nuke-accent);
-      color: #000;
-      border-color: #fff;
-      font-weight: bold;
-    }
-
-    .status-box {
-      margin-top: 15px;
-      padding: 10px;
-      background: #000;
-      font-size: 0.8rem;
-      border-left: 3px solid var(--nuke-accent);
-    }
-
-    .instruction {
-      position: absolute;
-      bottom: 20px;
-      width: 100%;
-      text-align: center;
-      font-size: 0.8rem;
-      color: #333;
-      font-weight: bold;
-      pointer-events: none;
-    }
-
-    /* =========================
-       CIRCUIT MODE
-       ========================= */
-    #circuit-panel {
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Space Grotesk', sans-serif;
-      overflow: hidden;
-    }
-
-    #circuit-panel * {
-      box-sizing: border-box;
-    }
-
-    #circuit-app {
-      display: grid;
-      grid-template-rows: 52px 1fr;
-      grid-template-columns: 220px 1fr 260px;
-      width: 100%;
-      height: 100%;
-    }
-
-    #topbar {
-      grid-column: 1 / -1;
-      background: var(--panel);
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      gap: 0;
-      padding: 0 16px;
-      z-index: 100;
-    }
-
-    #sidebar-left {
-      background: var(--panel);
-      border-right: 1px solid var(--border);
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-    }
-
-    #canvas-area {
-      position: relative;
-      overflow: hidden;
-      background: var(--bg);
-    }
-
-    #sidebar-right {
-      background: var(--panel);
-      border-left: 1px solid var(--border);
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .logo {
-      font-family: 'JetBrains Mono', monospace;
-      font-weight: 700;
-      font-size: 16px;
-      color: var(--accent);
-      letter-spacing: -0.5px;
-      margin-right: 24px;
-      white-space: nowrap;
-    }
-
-    .logo span { color: var(--text2); }
-
-    .toolbar-sep {
-      width: 1px;
-      height: 28px;
-      background: var(--border);
-      margin: 0 8px;
-    }
-
-    .tb-btn {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 12px;
-      border-radius: 6px;
-      border: 1px solid transparent;
-      background: transparent;
-      color: var(--text2);
-      font-size: 13px;
-      font-family: 'Space Grotesk', sans-serif;
-      cursor: pointer;
-      transition: all .15s;
-      white-space: nowrap;
-    }
-
-    .tb-btn:hover {
-      background: var(--panel2);
-      color: var(--text);
-      border-color: var(--border);
-    }
-
-    .tb-btn.active {
-      background: rgba(0,212,255,.12);
-      color: var(--accent);
-      border-color: rgba(0,212,255,.3);
-    }
-
-    .tb-btn.danger { color: var(--red); }
-    .tb-btn.danger:hover {
-      background: rgba(255,59,92,.1);
-      border-color: rgba(255,59,92,.3);
-    }
-
-    .tb-btn svg { flex-shrink: 0; }
-
-    .sim-status {
-      margin-left: auto;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .sim-badge {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 5px 12px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 600;
-      letter-spacing: .4px;
-    }
-
-    .sim-badge.off {
-      background: rgba(255,255,255,.05);
-      color: var(--text2);
-      border: 1px solid var(--border);
-    }
-
-    .sim-badge.running {
-      background: rgba(0,255,136,.1);
-      color: var(--green);
-      border: 1px solid rgba(0,255,136,.3);
-      animation: pulse-badge 2s infinite;
-    }
-
-    @keyframes pulse-badge {
-      0%,100% { box-shadow: 0 0 0 0 rgba(0,255,136,.3); }
-      50% { box-shadow: 0 0 0 4px rgba(0,255,136,.05); }
-    }
-
-    .sim-dot { width: 6px; height: 6px; border-radius: 50%; }
-    .sim-badge.off .sim-dot { background: var(--text3); }
-    .sim-badge.running .sim-dot { background: var(--green); animation: blink .8s infinite; }
-
-    @keyframes blink {
-      0%,100% { opacity: 1; }
-      50% { opacity: .3; }
-    }
-
-    .section-header {
-      padding: 12px 16px 8px;
-      font-size: 10px;
-      font-weight: 600;
-      letter-spacing: 1.5px;
-      color: var(--text2);
-      text-transform: uppercase;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .part-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 6px;
-      padding: 6px 12px 12px;
-    }
-
-    .part-item {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-      padding: 10px 6px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: var(--panel2);
-      cursor: grab;
-      transition: all .15s;
-      user-select: none;
-    }
-
-    .part-item:hover {
-      border-color: var(--accent);
-      background: rgba(0,212,255,.06);
-      transform: translateY(-1px);
-    }
-
-    .part-label {
-      font-size: 10px;
-      color: var(--text2);
-      text-align: center;
-      font-weight: 500;
-      line-height: 1.2;
-      white-space: pre-line;
-    }
-
-    .props-body { padding: 12px; flex: 1; }
-    .prop-group { margin-bottom: 16px; }
-    .prop-title {
-      font-size: 11px;
-      color: var(--text2);
-      font-weight: 600;
-      letter-spacing: .5px;
-      margin-bottom: 8px;
-      text-transform: uppercase;
-    }
-    .prop-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 8px;
-    }
-    .prop-label { font-size: 12px; color: var(--text2); }
-    .prop-value {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 13px;
-      color: var(--accent);
-      font-weight: 500;
-    }
-    .prop-input {
-      background: var(--panel2);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 4px 8px;
-      font-size: 13px;
-      font-family: 'JetBrains Mono', monospace;
-      color: var(--text);
-      width: 90px;
-      text-align: right;
-    }
-
-    .tab-row { display: flex; border-bottom: 1px solid var(--border); }
-    .tab {
-      flex: 1;
-      padding: 9px;
-      text-align: center;
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: .3px;
-      cursor: pointer;
-      color: var(--text2);
-      border-bottom: 2px solid transparent;
-    }
-    .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-    .tab-panel { display: none; flex: 1; flex-direction: column; }
-    .tab-panel.active { display: flex; flex-direction: column; }
-
-    .meter-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      padding: 8px 12px;
-    }
-    .meter-card {
-      padding: 10px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: var(--panel2);
-    }
-    .meter-label {
-      font-size: 10px;
-      color: var(--text2);
-      font-weight: 600;
-      letter-spacing: .5px;
-      text-transform: uppercase;
-      margin-bottom: 4px;
-    }
-    .meter-val {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 18px;
-      font-weight: 700;
-      line-height: 1;
-    }
-    .meter-unit {
-      font-size: 11px;
-      color: var(--text2);
-      margin-top: 2px;
-    }
-    .meter-v { color: var(--accent); }
-    .meter-i { color: var(--green); }
-    .meter-r { color: var(--amber); }
-    .meter-p { color: #c084fc; }
-
-    #main-canvas { display: block; }
-    #overlay-canvas {
-      position: absolute;
-      top: 0;
-      left: 0;
-      pointer-events: none;
-    }
-
-    .zoom-ctrl {
-      position: absolute;
-      bottom: 16px;
-      right: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      z-index: 10;
-    }
-
-    .zoom-btn {
-      width: 32px;
-      height: 32px;
-      border-radius: 6px;
-      border: 1px solid var(--border);
-      background: var(--panel);
-      color: var(--text2);
-      font-size: 18px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .zoom-label {
-      text-align: center;
-      font-size: 10px;
-      color: var(--text2);
-      font-family: 'JetBrains Mono', monospace;
-    }
-
-    .shortcut-hint {
-      position: absolute;
-      bottom: 16px;
-      left: 12px;
-      font-size: 11px;
-      color: var(--text2);
-      line-height: 1.8;
-      pointer-events: none;
-    }
-
-    .shortcut-hint kbd {
-      background: var(--panel2);
-      border: 1px solid var(--border);
-      border-radius: 3px;
-      padding: 1px 5px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 10px;
-    }
-
-    #mode-indicator {
-      position: absolute;
-      top: 12px;
-      left: 50%;
-      transform: translateX(-50%);
-      padding: 5px 14px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 600;
-      letter-spacing: .3px;
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity .2s;
-      z-index: 10;
-    }
-
-    #mode-indicator.visible { opacity: 1; }
-    #mode-indicator.wire-mode {
-      background: rgba(0,212,255,.15);
-      color: var(--accent);
-      border: 1px solid rgba(0,212,255,.3);
-    }
-    #mode-indicator.meter-mode {
-      background: rgba(255,184,0,.15);
-      color: var(--amber);
-      border: 1px solid rgba(255,184,0,.3);
-    }
-    #mode-indicator.delete-mode {
-      background: rgba(255,59,92,.15);
-      color: var(--red);
-      border: 1px solid rgba(255,59,92,.3);
-    }
-
-    #ctx-menu {
-      position: fixed;
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 4px;
-      z-index: 1000;
-      display: none;
-      min-width: 150px;
-      box-shadow: 0 8px 24px rgba(0,0,0,.5);
-    }
-    .ctx-item {
-      padding: 7px 12px;
-      border-radius: 5px;
-      font-size: 13px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: var(--text);
-    }
-    .ctx-item:hover { background: var(--panel2); }
-    .ctx-item.danger { color: var(--red); }
-    .ctx-item.sep { border-top: 1px solid var(--border); margin-top: 4px; padding-top: 8px; }
-
-    #toast {
-      position: fixed;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%) translateY(80px);
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 10px 20px;
-      font-size: 13px;
-      color: var(--text);
-      z-index: 2000;
-      transition: transform .3s;
-      white-space: nowrap;
-      pointer-events: none;
-    }
-    #toast.show { transform: translateX(-50%) translateY(0); }
-    #toast.success { border-color: rgba(0,255,136,.4); color: var(--green); }
-    #toast.error { border-color: rgba(255,59,92,.4); color: var(--red); }
-
-    #wire-tooltip {
-      position: fixed;
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 8px 12px;
-      font-size: 12px;
-      z-index: 500;
-      pointer-events: none;
-      display: none;
-    }
-
-    .stage-list {
-      padding: 8px 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .stage-item {
-      padding: 10px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: var(--panel2);
-      cursor: pointer;
-    }
-
-    .stage-item.active {
-      border-color: var(--accent);
-      background: rgba(0,212,255,.06);
-    }
-
-    .stage-num {
-      font-size: 10px;
-      color: var(--text2);
-      font-weight: 600;
-      letter-spacing: .5px;
-    }
-
-    .stage-name {
-      font-size: 13px;
-      color: var(--text);
-      font-weight: 500;
-      margin: 2px 0;
-    }
-
-    .stage-diff {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 10px;
-      font-size: 10px;
-      font-weight: 600;
-    }
-
-    .stage-diff.easy { background: rgba(0,255,136,.1); color: var(--green); }
-    .stage-diff.med { background: rgba(255,184,0,.1); color: var(--amber); }
-    .stage-diff.hard { background: rgba(255,59,92,.1); color: var(--red); }
-
-    .mission-card {
-      margin: 8px 12px;
-      padding: 12px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: var(--panel2);
-    }
-
-    .mission-title {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text);
-      margin-bottom: 6px;
-    }
-
-    .mission-desc {
-      font-size: 12px;
-      color: var(--text2);
-      line-height: 1.5;
-      margin-bottom: 10px;
-    }
-
-    .mission-goals {
-      list-style: none;
-      padding-left: 0;
-      margin: 0;
-    }
-
-    .mission-goal {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 12px;
-      color: var(--text2);
-      margin-bottom: 5px;
-    }
-
-    .goal-check {
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      border: 1.5px solid var(--text2);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-
-    .goal-check.done {
-      background: var(--green);
-      border-color: var(--green);
-    }
-
-    .goal-check.done::after {
-      content: '✓';
-      font-size: 9px;
-      color: #000;
-      font-weight: 700;
-    }
-
-    .mission-btn {
-      width: 100%;
-      padding: 8px;
-      margin-top: 8px;
-      border-radius: 6px;
-      border: 1px solid var(--border);
-      background: transparent;
-      color: var(--text2);
-      font-size: 12px;
-      cursor: pointer;
-      font-family: 'Space Grotesk', sans-serif;
-    }
-
-    .mission-btn:hover {
-      border-color: var(--accent);
-      color: var(--accent);
-    }
-
-    .part-icon {
-      width: 36px;
-      height: 28px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    #drag-ghost {
-      position: fixed;
-      pointer-events: none;
-      z-index: 9999;
-      opacity: .85;
-      display: none;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Escape the Observable Universe</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Noto+Sans+KR:wght@300;400;700&display=swap');
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            color: #fff;
+            font-family: 'Noto Sans KR', sans-serif;
+            user-select: none;
+        }
+
+        h1, h2, h3, .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        #game-canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none; /* Let clicks pass through to canvas if needed, though we use UI buttons */
+        }
+
+        .panel {
+            background: rgba(10, 15, 30, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(100, 150, 255, 0.2);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+            pointer-events: auto; /* Enable interaction for UI elements */
+        }
+
+        .crt-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 2px, 3px 100%;
+            z-index: 5;
+            pointer-events: none;
+            opacity: 0.4;
+        }
+
+        /* Custom Scrollbar for logs */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.3);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(100, 150, 255, 0.5);
+            border-radius: 3px;
+        }
+
+        .glitch-text {
+            animation: glitch 1s linear infinite;
+        }
+
+        @keyframes glitch{
+            2%,64%{transform:translate(2px,0) skew(0deg);}
+            4%,60%{transform:translate(-2px,0) skew(0deg);}
+            62%{transform:translate(0,0) skew(5deg);}
+        }
+
+        /* Chart container constraint */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 150px;
+        }
+    </style>
 </head>
 <body>
-  <div class="app-shell">
-    <div class="mode-bar">
-      <div class="mode-title">Combined Simulator</div>
-      <button class="mode-btn active" id="btn-mode-nuclear" onclick="switchMainMode('nuclear')">Nuclear</button>
-      <div class="mode-fill"></div>
+
+    <!-- Chosen Palette: Deep Space Neo - Black (#000), Deep Navy (rgba(10,15,30)), Neon Blue (rgba(100,150,255)), Alert Red (rgba(255,50,50)), Stark White (#fff) -->
+    <!-- Application Structure Plan: 
+         A single-page highly interactive game prototype. 
+         - Background: HTML5 Canvas rendering stars, planets, black holes with parallax and Doppler color shifting.
+         - Top: Main telemetry dashboard (Speed, Distance, Energy).
+         - Left: Narrative terminal displaying systemic logs to tell the story of the journey.
+         - Right: Upgrade matrix for progression.
+         - Bottom Right: A real-time data visualization (Chart.js) showing acceleration curves, grounding the sci-fi concept in 'data'.
+         This dashboard layout allows the user to play the game while continuously reading the narrative and analyzing their performance data. 
+    -->
+    <!-- Visualization & Content Choices: 
+         - Background (Canvas): Represents the physical journey. Uses procedural generation and math to simulate Doppler effect and gravity lensing (no SVG).
+         - Telemetry Chart (Chart.js): Shows Speed over Time. Goal: Inform/Analyze. Method: Line chart updating dynamically. Justification: Visualizes the exponential nature of the journey and the effect of upgrades/gravity assists.
+         - Narrative Logs (HTML/JS): Translates stage progression into story.
+         - Upgrades (HTML/JS buttons): Interaction for progression.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <canvas id="game-canvas"></canvas>
+    <div class="crt-overlay"></div>
+
+    <div id="ui-layer" class="flex flex-col justify-between p-4 h-full">
+        
+        <!-- Top HUD: Telemetry -->
+        <div class="panel w-full max-w-4xl mx-auto rounded-lg p-4 flex justify-between items-center text-sm md:text-base border-t-4 border-blue-500">
+            <div class="flex-1">
+                <div class="text-blue-300 font-orbitron text-xs uppercase tracking-widest">Current Stage</div>
+                <div id="ui-stage" class="text-xl font-bold text-white glitch-text">대기권 돌파</div>
+            </div>
+            <div class="flex-1 text-center">
+                <div class="text-blue-300 font-orbitron text-xs uppercase tracking-widest">Velocity</div>
+                <div id="ui-speed" class="text-2xl font-bold font-orbitron text-cyan-400">0.000 c</div>
+            </div>
+            <div class="flex-1 text-right">
+                <div class="text-blue-300 font-orbitron text-xs uppercase tracking-widest">Distance Traveled</div>
+                <div id="ui-dist" class="text-xl font-bold text-white">0.00 Ly</div>
+            </div>
+        </div>
+
+        <!-- Middle Area: Main Gameplay space (empty for canvas) -->
+        <div class="flex-grow flex items-center justify-center relative">
+             <!-- Interactive helper text -->
+             <div id="interaction-hint" class="absolute bottom-10 text-center text-gray-400 text-sm font-orbitron tracking-widest animate-pulse opacity-50">
+                [ HOLD SPACE or CLICK TO ACCELERATE ] <br> [ MOUSE Y-AXIS TO STEER ]
+             </div>
+             <!-- Ending Screen (Hidden initially) -->
+             <div id="end-screen" class="hidden absolute inset-0 z-50 flex flex-col items-center justify-center bg-black">
+                <h1 class="text-6xl md:text-8xl font-orbitron text-white tracking-[0.2em] mb-8 glitch-text">NOTHINGNESS</h1>
+                <p class="text-xl text-gray-400 max-w-2xl text-center leading-relaxed">
+                    관측 가능한 우주의 경계를 넘어섰습니다.<br>
+                    시간과 공간의 의미가 사라진 이 곳에서, 여정은 끝이 납니다.
+                </p>
+                <button onclick="location.reload()" class="mt-12 px-8 py-3 border border-white text-white font-orbitron hover:bg-white hover:text-black transition duration-300">REBOOT SEQUENCE</button>
+             </div>
+        </div>
+
+        <!-- Bottom Layout: Logs, Controls, Data -->
+        <div class="flex flex-col md:flex-row gap-4 h-64">
+            
+            <!-- System Log Terminal -->
+            <div class="panel flex-1 rounded-lg p-4 flex flex-col">
+                <div class="text-blue-300 font-orbitron text-xs uppercase border-b border-blue-900 pb-2 mb-2">System Terminal</div>
+                <div id="log-container" class="flex-grow overflow-y-auto text-xs font-mono space-y-1">
+                    <div class="text-green-400">[System]: 엔진 초기화 완료. 우주 개척을 시작합니다.  <br> [V.1.1] change log: 엔진 종류 2종 추가, 적색편이 구현.</div>
+                </div>
+            </div>
+
+            <!-- Engineering / Upgrades -->
+            <div class="panel w-full md:w-1/3 rounded-lg p-4 flex flex-col">
+                <div class="flex justify-between border-b border-blue-900 pb-2 mb-2 items-end">
+                    <div class="text-blue-300 font-orbitron text-xs uppercase">Engineering</div>
+                    <div class="text-xs text-yellow-400">Dark Matter: <span id="ui-currency" class="font-bold">0</span></div>
+                </div>
+                <div id="upgrade-list" class="flex-grow overflow-y-auto space-y-2 pr-2">
+                    <!-- Populated by JS -->
+                </div>
+                
+                <!-- Engine Status Bar -->
+                <div class="mt-2">
+                    <div class="text-[10px] text-gray-400 mb-1 flex justify-between"><span>Engine Heat/Energy</span><span id="ui-energy-text">100%</span></div>
+                    <div class="w-full bg-gray-800 h-2 rounded overflow-hidden">
+                        <div id="ui-energy-bar" class="bg-cyan-500 h-full w-full transition-all duration-100"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Telemetry Data (Chart.js) -->
+            <div class="panel w-full md:w-1/3 rounded-lg p-4 hidden md:flex flex-col">
+                 <div class="text-blue-300 font-orbitron text-xs uppercase border-b border-blue-900 pb-2 mb-2">Telemetry Data</div>
+                 <div class="chart-container flex-grow">
+                     <canvas id="telemetryChart"></canvas>
+                 </div>
+            </div>
+
+        </div>
     </div>
 
-    <div class="mode-wrap">
-      <div class="mode-panel active" id="nuclear-panel">
-        <div id="nuke-overlay"></div>
-        <div class="nuclear-interface">
-          <h1>PHYSICS LAB V9.0 (Ultimate)</h1>
+    <script>
+        /**
+         * Core Game State & Configuration
+         */
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        let cw, ch;
 
-          <div class="tool-group">
-            <div class="label">Structure & Nature</div>
-            <div class="grid">
-              <button onclick="NuclearApp.setTool('CERAMIC', this)" style="color:#a1887f;">도자기</button>
-              <button onclick="NuclearApp.setTool('DIAMOND', this)" style="color:#b3e5fc;">다이아몬드</button>
-              <button onclick="NuclearApp.setTool('WOOD', this)" style="color:#8d6e63;">나무</button>
-              <button onclick="NuclearApp.setTool('COAL', this)" style="color:#555;">석탄</button>
-              <button onclick="NuclearApp.setTool('WATER', this)" style="color:#2196f3;">물</button>
-            </div>
-          </div>
-
-          <div class="tool-group">
-            <div class="label">Chemicals</div>
-            <div class="grid">
-              <button onclick="NuclearApp.setTool('NG', this)" style="color:#ffeb3b;">나이트로</button>
-              <button onclick="NuclearApp.setTool('FM', this)" style="color:#ffffff;">뇌홍</button>
-              <button onclick="NuclearApp.setTool('AA', this)" style="color:#a3ff00;">아지도</button>
-              <button onclick="NuclearApp.setTool('TNT', this)">TNT</button>
-              <button onclick="NuclearApp.setTool('C4', this)">C4</button>
-              <button onclick="NuclearApp.setTool('FIRE', this)" style="color:#ff4400;">불 (Fire)</button>
-            </div>
-          </div>
-
-          <div class="tool-group">
-            <div class="label">Nuclear Materials</div>
-            <div class="grid">
-              <button onclick="NuclearApp.setTool('U235', this)" style="border-bottom:2px solid #ccff00;">U-235</button>
-              <button onclick="NuclearApp.setTool('PU239', this)" style="border-bottom:2px solid #ff00ff;">PU-239</button>
-            </div>
-          </div>
-
-          <div class="tool-group">
-            <div class="label">Utility</div>
-            <div class="grid">
-              <button onclick="NuclearApp.setTool('EMPTY', this)" style="grid-column: span 2; color:#ff5555;">지우개 (바닥 제외)</button>
-            </div>
-          </div>
-
-          <div class="status-box">
-            <div>임계 질량 모니터: <span id="mass-display">0</span> u</div>
-            <div id="alert-msg" style="color:#ffcc00;">빈 공간에만 설치 가능 로직 적용.</div>
-          </div>
-
-          <button onclick="NuclearApp.clearMap()" style="width:100%; margin-top:10px; background:#400; color:#fff;">전체 리셋</button>
-        </div>
-
-        <div class="instruction">불꽃이나 폭발이 근처에 있으면 나무에 불이 붙습니다.</div>
-        <canvas id="nuclear-canvas"></canvas>
-      </div>
-
-      <div class="mode-panel" id="circuit-panel">
-        <div id="circuit-app">
-          <header id="topbar">
-            <div class="logo">Circuit<span>Lab</span></div>
-            <div class="toolbar-sep"></div>
-            <button class="tb-btn" id="btn-select" onclick="CircuitApp.setTool('select')" title="선택 (S)">선택</button>
-            <button class="tb-btn" id="btn-wire" onclick="CircuitApp.setTool('wire')" title="와이어 (W)">와이어</button>
-            <button class="tb-btn" id="btn-delete" onclick="CircuitApp.setTool('delete')" title="삭제 (Del)">삭제</button>
-            <button class="tb-btn" id="btn-meter" onclick="CircuitApp.setTool('meter')" title="멀티미터 (M)">멀티미터</button>
-            <div class="toolbar-sep"></div>
-            <button class="tb-btn" onclick="CircuitApp.rotateSelected()" title="회전 (R)">회전</button>
-            <button class="tb-btn" onclick="CircuitApp.clearCanvas()" title="전체 지우기">지우기</button>
-            <div class="toolbar-sep"></div>
-            <button class="tb-btn" onclick="CircuitApp.saveCircuit()" title="저장">저장</button>
-            <button class="tb-btn" onclick="CircuitApp.loadCircuit()" title="불러오기">불러오기</button>
-            <div class="sim-status">
-              <span id="sim-badge" class="sim-badge off"><span class="sim-dot"></span><span id="sim-text">시뮬레이션 중지</span></span>
-              <button class="tb-btn active" id="btn-sim" onclick="CircuitApp.toggleSimulation()" style="font-weight:600">실행</button>
-            </div>
-          </header>
-
-          <aside id="sidebar-left">
-            <div class="section-header">부품 인벤토리</div>
-            <div class="part-grid" id="part-inventory"></div>
-
-            <div class="section-header" style="margin-top:4px;">스테이지</div>
-            <div class="stage-list">
-              <div class="stage-item active" onclick="CircuitApp.loadStage(0)">
-                <div class="stage-num">STAGE 01</div><div class="stage-name">첫 번째 불빛</div><span class="stage-diff easy">쉬움</span>
-              </div>
-              <div class="stage-item" onclick="CircuitApp.loadStage(1)">
-                <div class="stage-num">STAGE 02</div><div class="stage-name">직렬 회로</div><span class="stage-diff easy">쉬움</span>
-              </div>
-              <div class="stage-item" onclick="CircuitApp.loadStage(2)">
-                <div class="stage-num">STAGE 03</div><div class="stage-name">병렬 회로</div><span class="stage-diff med">보통</span>
-              </div>
-              <div class="stage-item" onclick="CircuitApp.loadStage(3)">
-                <div class="stage-num">STAGE 04</div><div class="stage-name">정밀 전류 제어</div><span class="stage-diff hard">어려움</span>
-              </div>
-              <div class="stage-item" onclick="CircuitApp.loadStage(4)">
-                <div class="stage-num">SANDBOX</div><div class="stage-name">자유 설계 모드</div><span class="stage-diff easy">무제한</span>
-              </div>
-            </div>
-          </aside>
-
-          <main id="canvas-area">
-            <canvas id="main-canvas"></canvas>
-            <canvas id="overlay-canvas"></canvas>
-            <div id="mode-indicator"></div>
-            <div class="zoom-ctrl">
-              <button class="zoom-btn" onclick="CircuitApp.zoom(1.2)">+</button>
-              <div class="zoom-label" id="zoom-label">100%</div>
-              <button class="zoom-btn" onclick="CircuitApp.zoom(0.833)">−</button>
-              <button class="zoom-btn" onclick="CircuitApp.resetView()" title="뷰 초기화" style="font-size:12px">⌂</button>
-            </div>
-            <div class="shortcut-hint">
-              <kbd>W</kbd> 와이어 &nbsp;<kbd>S</kbd> 선택 &nbsp;<kbd>R</kbd> 회전 &nbsp;<kbd>Del</kbd> 삭제 &nbsp;<kbd>Space</kbd> 시뮬
-            </div>
-          </main>
-
-          <aside id="sidebar-right">
-            <div class="tab-row">
-              <div class="tab active" onclick="CircuitApp.switchTab('props')">속성</div>
-              <div class="tab" onclick="CircuitApp.switchTab('meter')">미터</div>
-              <div class="tab" onclick="CircuitApp.switchTab('mission')">미션</div>
-            </div>
-
-            <div class="tab-panel active" id="tab-props">
-              <div class="props-body">
-                <div id="props-empty" style="color:var(--text2);font-size:12px;margin-top:20px;text-align:center;">
-                  부품을 선택하면<br>속성이 표시됩니다
-                </div>
-                <div id="props-content" style="display:none">
-                  <div class="prop-group">
-                    <div class="prop-title">부품 정보</div>
-                    <div class="prop-row"><span class="prop-label">종류</span><span class="prop-value" id="prop-type">—</span></div>
-                    <div class="prop-row"><span class="prop-label">ID</span><span class="prop-value" id="prop-id" style="font-size:11px;color:var(--text2)">—</span></div>
-                  </div>
-                  <div class="prop-group" id="prop-value-group">
-                    <div class="prop-title">값 설정</div>
-                    <div class="prop-row"><span class="prop-label" id="prop-val-label">값</span><input type="number" class="prop-input" id="prop-val-input" oninput="CircuitApp.updatePartValue(this.value)"></div>
-                    <div class="prop-row"><span class="prop-label">단위</span><span class="prop-value" id="prop-val-unit">—</span></div>
-                  </div>
-                  <div class="prop-group" id="prop-sim-group" style="display:none">
-                    <div class="prop-title">시뮬레이션 결과</div>
-                    <div class="prop-row"><span class="prop-label">전압강하</span><span class="prop-value" id="prop-voltage">—</span></div>
-                    <div class="prop-row"><span class="prop-label">전류</span><span class="prop-value" id="prop-current">—</span></div>
-                    <div class="prop-row"><span class="prop-label">소비전력</span><span class="prop-value" id="prop-power">—</span></div>
-                  </div>
-                  <button class="tb-btn danger" style="width:100%;justify-content:center;margin-top:8px" onclick="CircuitApp.deleteSelected()">삭제</button>
-                </div>
-              </div>
-            </div>
-
-            <div class="tab-panel" id="tab-meter">
-              <div style="padding:8px 12px 4px">
-                <div style="font-size:11px;color:var(--text2);margin-bottom:8px">멀티미터 모드를 선택 후 부품이나 와이어를 클릭하세요</div>
-              </div>
-              <div class="meter-grid">
-                <div class="meter-card"><div class="meter-label">전압</div><div class="meter-val meter-v" id="m-voltage">—</div><div class="meter-unit">Volt (V)</div></div>
-                <div class="meter-card"><div class="meter-label">전류</div><div class="meter-val meter-i" id="m-current">—</div><div class="meter-unit">Ampere (A)</div></div>
-                <div class="meter-card"><div class="meter-label">저항</div><div class="meter-val meter-r" id="m-resistance">—</div><div class="meter-unit">Ohm (Ω)</div></div>
-                <div class="meter-card"><div class="meter-label">전력</div><div class="meter-val meter-p" id="m-power">—</div><div class="meter-unit">Watt (W)</div></div>
-              </div>
-              <div style="padding:8px 12px">
-                <div class="section-header" style="padding:0 0 8px">회로 전체</div>
-                <div class="prop-row"><span class="prop-label">총 저항</span><span class="prop-value" id="total-r">—</span></div>
-                <div class="prop-row"><span class="prop-label">공급 전압</span><span class="prop-value" id="total-v">—</span></div>
-                <div class="prop-row"><span class="prop-label">회로 전류</span><span class="prop-value" id="total-i">—</span></div>
-                <div class="prop-row"><span class="prop-label">총 소비전력</span><span class="prop-value" id="total-p">—</span></div>
-              </div>
-            </div>
-
-            <div class="tab-panel" id="tab-mission">
-              <div style="padding:6px 12px 0">
-                <div class="mission-card" id="mission-card">
-                  <div class="mission-title" id="mission-title">미션 로딩 중...</div>
-                  <div class="mission-desc" id="mission-desc"></div>
-                  <ul class="mission-goals" id="mission-goals"></ul>
-                  <button class="mission-btn" onclick="CircuitApp.loadStage(CircuitApp.currentStage)">↺ 스테이지 재시작</button>
-                </div>
-              </div>
-              <div style="padding:4px 12px 8px">
-                <div class="section-header" style="padding:8px 0 6px">힌트</div>
-                <div style="font-size:12px;color:var(--text2);line-height:1.6" id="mission-hint"></div>
-              </div>
-            </div>
-          </aside>
-        </div>
-
-        <div id="ctx-menu">
-          <div class="ctx-item" onclick="CircuitApp.ctxAction('rotate')">↻ 90° 회전</div>
-          <div class="ctx-item" onclick="CircuitApp.ctxAction('flip')">↔ 좌우 반전</div>
-          <div class="ctx-item sep danger" onclick="CircuitApp.ctxAction('delete')">✕ 삭제</div>
-        </div>
-
-        <div id="toast"></div>
-        <div id="wire-tooltip"></div>
-        <div id="drag-ghost"></div>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    function switchMainMode(mode) {
-      const n = document.getElementById('nuclear-panel');
-      const c = document.getElementById('circuit-panel');
-      const bn = document.getElementById('btn-mode-nuclear');
-      const bc = document.getElementById('btn-mode-circuit');
-
-      if (mode === 'nuclear') {
-        n.classList.add('active');
-        c.classList.remove('active');
-        bn.classList.add('active');
-        bc.classList.remove('active');
-      } else {
-        c.classList.add('active');
-        n.classList.remove('active');
-        bc.classList.add('active');
-        bn.classList.remove('active');
-        if (window.CircuitApp && CircuitApp.onShow) CircuitApp.onShow();
-      }
-    }
-  </script>
-
-  <script>
-  const NuclearApp = (() => {
-    const canvas = document.getElementById('nuclear-canvas');
-    const ctx = canvas.getContext('2d', { alpha: false });
-    const nukeOverlay = document.getElementById('nuke-overlay');
-    const massDisplay = document.getElementById('mass-display');
-
-    const SCALE = 4;
-    let width, height, cols, rows;
-    let grid;
-    let currentTool = 'NG';
-    let isMouseDown = false;
-    let particles = [];
-    const MAX_PARTICLES = 2500;
-    let nukeEffect = null;
-
-    const M = {
-      EMPTY: 0, TNT: 1, C4: 2, AA: 3, U235: 4, PU239: 5,
-      FIRE: 6, EXPLOSION: 7, SMOKE: 8, GROUND: 9,
-      FM: 10, NG: 11, CERAMIC: 12, DIAMOND: 13, WOOD: 14, WATER: 15, COAL: 16
-    };
-
-    const MATERIALS = {
-      EMPTY: M.EMPTY, TNT: M.TNT, C4: M.C4, AA: M.AA, U235: M.U235, PU239: M.PU239,
-      FIRE: M.FIRE, EXPLOSION: M.EXPLOSION, SMOKE: M.SMOKE, GROUND: M.GROUND,
-      FM: M.FM, NG: M.NG, CERAMIC: M.CERAMIC, DIAMOND: M.DIAMOND, WOOD: M.WOOD,
-      WATER: M.WATER, COAL: M.COAL
-    };
-
-    const PROPS = {
-      [M.TNT]: { color:'#d32f2f', type:'solid', sensitivity:0.4, power:18, fireChance:0.8 },
-      [M.C4]: { color:'#e0e0e0', type:'solid', sensitivity:0.15, power:30, fireChance:0.5 },
-      [M.AA]: { color:'#a3ff00', type:'powder', sensitivity:0.98, power:15, fireChance:0.99 },
-      [M.FM]: { color:'#ffffff', type:'powder', sensitivity:0.92, power:20, fireChance:0.95 },
-      [M.NG]: { color:'#ffeb3b', type:'liquid', sensitivity:1.0, power:45, fireChance:1.0, viscosity:2 },
-      [M.U235]: { color:'#ccff00', type:'solid', critical:180, power:100 },
-      [M.PU239]: { color:'#ff00ff', type:'solid', critical:70, power:150 },
-      [M.FIRE]: { color:'#ffcc00', type:'energy' },
-      [M.EXPLOSION]: { color:'#ffdd00', type:'energy' },
-      [M.SMOKE]: { color:'#444444', type:'gas' },
-      [M.GROUND]: { color:'#C2B280', type:'static', indestructible:true },
-      [M.CERAMIC]: { color:'#6d4c41', type:'static' },
-      [M.DIAMOND]: { color:'#b3e5fc', type:'static', indestructible:true },
-      [M.WOOD]: { color:'#8d6e63', type:'static', flammability:0.05 },
-      [M.WATER]: { color:'#2196f3', type:'liquid', viscosity:6 },
-      [M.COAL]: { color:'#222222', type:'solid', flammability:0.08 }
-    };
-
-    function getIndex(x, y) {
-      if (x < 0 || x >= cols || y < 0 || y >= rows) return -1;
-      return x + y * cols;
-    }
-
-    function init() {
-      width = canvas.width = window.innerWidth;
-      height = canvas.height = window.innerHeight - 52;
-      cols = Math.floor(width / SCALE);
-      rows = Math.floor(height / SCALE);
-      grid = new Uint8Array(cols * rows);
-      const groundStart = rows - Math.floor(rows * 0.1);
-      for (let y = groundStart; y < rows; y++) {
-        for (let x = 0; x < cols; x++) grid[getIndex(x, y)] = M.GROUND;
-      }
-    }
-
-    function setTool(tool, btn) {
-      currentTool = tool;
-      document.querySelectorAll('#nuclear-panel button').forEach(b => b.classList.remove('active'));
-      if (btn) btn.classList.add('active');
-    }
-
-    function clearMap() {
-      particles = [];
-      nukeEffect = null;
-      init();
-    }
-
-    class Debris {
-      constructor(x, y, vx, vy, color, isHighEnergy = false) {
-        this.x = x; this.y = y; this.vx = vx; this.vy = vy;
-        this.initialColor = color;
-        this.life = 1.0;
-        this.decay = Math.random() * 0.015 + 0.01;
-        this.size = isHighEnergy ? Math.random() * 12 + 6 : Math.random() * 4 + 2;
-        this.isHighEnergy = isHighEnergy;
-        this.angle = Math.random() * Math.PI * 2;
-        this.spin = (Math.random() - 0.5) * 0.4;
-      }
-      update() {
-        this.x += this.vx; this.y += this.vy;
-        this.vy += 0.25; this.vx *= 0.98;
-        this.life -= this.decay;
-        this.angle += this.spin;
-        const gx = Math.floor(this.x / SCALE);
-        const gy = Math.floor(this.y / SCALE);
-        const idx = getIndex(gx, gy);
-        if (idx !== -1) {
-          const mat = grid[idx];
-          if (mat > 0 && PROPS[mat] && !PROPS[mat].indestructible) {
-            if (this.isHighEnergy || (Math.random() < 0.5 && Math.abs(this.vx) + Math.abs(this.vy) > 8)) {
-              grid[idx] = M.EMPTY;
-            }
-          }
-        }
-      }
-      draw() {
-        ctx.globalAlpha = this.life;
-        if (this.isHighEnergy) {
-          ctx.fillStyle = this.life > 0.6 ? '#fff' : (this.life > 0.3 ? '#ffdd00' : '#ff4400');
-          ctx.shadowBlur = this.life * 15;
-          ctx.shadowColor = '#ffaa00';
-        } else {
-          ctx.fillStyle = this.initialColor;
-          ctx.shadowBlur = 0;
-        }
-        ctx.save();
-        ctx.translate(this.x, this.y);
-        ctx.rotate(this.angle);
-        ctx.fillRect(-this.size / 2, -this.size / 2, this.size, this.size);
-        ctx.restore();
-        ctx.shadowBlur = 0;
-        ctx.globalAlpha = 1;
-      }
-    }
-
-    function handleInput(e) {
-      if (!isMouseDown) return;
-      const rect = canvas.getBoundingClientRect();
-      const mouseX = Math.floor((e.clientX - rect.left) / SCALE);
-      const mouseY = Math.floor((e.clientY - rect.top) / SCALE);
-      const radius = 3;
-      for (let i = -radius; i <= radius; i++) {
-        for (let j = -radius; j <= radius; j++) {
-          if (Math.sqrt(i * i + j * j) <= radius) {
-            const idx = getIndex(mouseX + i, mouseY + j);
-            if (idx !== -1) {
-              const targetMat = grid[idx];
-              if (currentTool === 'EMPTY') {
-                if (targetMat !== M.GROUND) grid[idx] = M.EMPTY;
-              } else {
-                if (targetMat === M.EMPTY) grid[idx] = MATERIALS[currentTool];
-              }
-            }
-          }
-        }
-      }
-    }
-
-    function triggerNuclear(x, y) {
-      nukeOverlay.style.transition = 'none';
-      nukeOverlay.style.opacity = '1';
-      setTimeout(() => {
-        nukeOverlay.style.transition = 'opacity 3.5s ease-out';
-        nukeOverlay.style.opacity = '0';
-      }, 50);
-      for (let i = 0; i < 500; i++) {
-        const a = Math.random() * Math.PI * 2;
-        const v = Math.random() * 45 + 15;
-        particles.push(new Debris(x * SCALE, y * SCALE, Math.cos(a) * v, Math.sin(a) * v, '#fff', true));
-      }
-      nukeEffect = { x: x * SCALE, y: y * SCALE, size: 0, alpha: 1 };
-    }
-
-    function update() {
-      const nextGrid = new Uint8Array(grid);
-      let nuclearCounter = { [M.U235]: 0, [M.PU239]: 0 };
-      let nuclearPos = { [M.U235]: { x: 0, y: 0 }, [M.PU239]: { x: 0, y: 0 } };
-
-      for (let y = rows - 1; y >= 0; y--) {
-        for (let x = 0; x < cols; x++) {
-          const i = getIndex(x, y);
-          const mat = grid[i];
-          if (mat === M.EMPTY) continue;
-          const props = PROPS[mat];
-          if (!props) continue;
-
-          if (props.type === 'powder' || props.type === 'liquid') {
-            const down = getIndex(x, y + 1);
-            if (down !== -1 && nextGrid[down] === M.EMPTY) {
-              nextGrid[i] = M.EMPTY; nextGrid[down] = mat;
-            } else {
-              const dir = Math.random() > 0.5 ? 1 : -1;
-              const side = getIndex(x + dir, y + 1);
-              if (side !== -1 && nextGrid[side] === M.EMPTY) {
-                nextGrid[i] = M.EMPTY; nextGrid[side] = mat;
-              } else if (props.type === 'liquid') {
-                const hSide = getIndex(x + dir, y);
-                if (hSide !== -1 && nextGrid[hSide] === M.EMPTY) {
-                  nextGrid[i] = M.EMPTY; nextGrid[hSide] = mat;
-                }
-              }
-            }
-          }
-
-          if (mat === M.EXPLOSION) {
-            const radius = 5;
-            for (let nx = -radius; nx <= radius; nx++) {
-              for (let ny = -radius; ny <= radius; ny++) {
-                const nidx = getIndex(x + nx, y + ny);
-                if (nidx === -1) continue;
-                const t = grid[nidx];
-                if (t === M.EMPTY) continue;
-                const tp = PROPS[t];
-                if (!tp || tp.indestructible) continue;
-                if (Math.random() < 0.4) nextGrid[nidx] = M.EMPTY;
-                if ((t === M.WOOD || t === M.COAL) && nextGrid[nidx] !== M.EMPTY) nextGrid[nidx] = M.FIRE;
-                if (tp.sensitivity && Math.random() < tp.fireChance && nextGrid[nidx] !== M.EMPTY) nextGrid[nidx] = M.EXPLOSION;
-              }
-            }
-            if (particles.length < MAX_PARTICLES && Math.random() < 0.3) {
-              particles.push(new Debris(x * SCALE, y * SCALE, (Math.random() - 0.5) * 20, (Math.random() - 0.5) * 20, '#ffcc00'));
-            }
-            nextGrid[i] = Math.random() < 0.5 ? M.SMOKE : M.EMPTY;
-          }
-
-          if (mat === M.FIRE) {
-            const upIdx = getIndex(x + (Math.floor(Math.random() * 3) - 1), y - 1);
-            if (upIdx !== -1 && nextGrid[upIdx] === M.EMPTY) {
-              nextGrid[i] = M.EMPTY;
-              nextGrid[upIdx] = M.FIRE;
-            }
-            const neighbors = [getIndex(x+1,y), getIndex(x-1,y), getIndex(x,y+1), getIndex(x,y-1)];
-            for (const nIdx of neighbors) {
-              if (nIdx === -1) continue;
-              const target = grid[nIdx];
-              if (target === M.EMPTY) continue;
-              const tp = PROPS[target];
-              if (!tp) continue;
-              if (target === M.WATER) {
-                nextGrid[i] = M.SMOKE;
-                nextGrid[nIdx] = M.EMPTY;
-              } else if (tp.flammability && Math.random() < tp.flammability) {
-                nextGrid[nIdx] = M.FIRE;
-              } else if (tp.sensitivity && Math.random() < tp.fireChance) {
-                nextGrid[nIdx] = M.EXPLOSION;
-              }
-            }
-            if (Math.random() < 0.15) nextGrid[i] = M.SMOKE;
-          }
-
-          if (mat === M.SMOKE) {
-            const up = getIndex(x + (Math.floor(Math.random() * 3) - 1), y - 1);
-            if (up !== -1 && nextGrid[up] === M.EMPTY) {
-              nextGrid[i] = M.EMPTY; nextGrid[up] = mat;
-            } else if (Math.random() < 0.03) {
-              nextGrid[i] = M.EMPTY;
-            }
-          }
-
-          if (mat === M.U235 || mat === M.PU239) {
-            nuclearCounter[mat]++;
-            nuclearPos[mat].x += x;
-            nuclearPos[mat].y += y;
-          }
-        }
-      }
-
-      for (let type of [M.U235, M.PU239]) {
-        if (nuclearCounter[type] >= PROPS[type].critical) {
-          const cx = Math.floor(nuclearPos[type].x / nuclearCounter[type]);
-          const cy = Math.floor(nuclearPos[type].y / nuclearCounter[type]);
-          triggerNuclear(cx, cy);
-          for (let k = 0; k < nextGrid.length; k++) {
-            const v = nextGrid[k];
-            if (v !== M.GROUND && v !== M.DIAMOND) nextGrid[k] = M.EMPTY;
-          }
-          break;
-        }
-      }
-
-      massDisplay.innerText = (nuclearCounter[M.U235] + nuclearCounter[M.PU239]).toString();
-      grid.set(nextGrid);
-
-      for (let j = particles.length - 1; j >= 0; j--) {
-        particles[j].update();
-        if (particles[j].life <= 0) particles.splice(j, 1);
-      }
-    }
-
-    function draw() {
-      ctx.fillStyle = '#87CEEB';
-      ctx.fillRect(0, 0, width, height);
-      for (let i = 0; i < grid.length; i++) {
-        const mat = grid[i];
-        if (mat === M.EMPTY) continue;
-        const props = PROPS[mat];
-        if (!props) continue;
-        const x = (i % cols) * SCALE;
-        const y = Math.floor(i / cols) * SCALE;
-        ctx.fillStyle = props.color;
-        ctx.fillRect(x, y, SCALE, SCALE);
-        if (mat === M.FIRE || mat === M.EXPLOSION) {
-          if (Math.random() > 0.8) {
-            ctx.fillStyle = '#fff';
-            ctx.fillRect(x, y, SCALE, SCALE);
-          }
-        }
-      }
-      for (let p of particles) p.draw();
-
-      if (nukeEffect) {
-        ctx.save();
-        ctx.globalAlpha = nukeEffect.alpha;
-        const grad = ctx.createRadialGradient(nukeEffect.x, nukeEffect.y, 0, nukeEffect.x, nukeEffect.y, nukeEffect.size);
-        grad.addColorStop(0, '#fff');
-        grad.addColorStop(0.4, '#ffaa00');
-        grad.addColorStop(1, 'transparent');
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.arc(nukeEffect.x, nukeEffect.y, nukeEffect.size, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-
-        nukeEffect.size += 30;
-        nukeEffect.alpha -= 0.015;
-        if (nukeEffect.alpha <= 0) nukeEffect = null;
-      }
-    }
-
-    function loop() {
-      update();
-      draw();
-      requestAnimationFrame(loop);
-    }
-
-    function bind() {
-      window.addEventListener('mousedown', e => { if (document.getElementById('nuclear-panel').classList.contains('active')) isMouseDown = true; });
-      window.addEventListener('mouseup', () => isMouseDown = false);
-      window.addEventListener('mousemove', handleInput);
-      window.addEventListener('resize', init);
-    }
-
-    init();
-    bind();
-    loop();
-
-    return { setTool, clearMap };
-  })();
-  </script>
-
-  <script>
-  const CircuitApp = (() => {
-    const GRID = 40;
-    let canvas, ctx, overlay, octx;
-    let W, H;
-    let scale = 1, offsetX = 0, offsetY = 0;
-    let tool = 'select';
-    let parts = [];
-    let wires = [];
-    let nextId = 1;
-    let selectedPart = null;
-    let selectedWire = null;
-    let draggingPart = null, dragOffX = 0, dragOffY = 0;
-    let wiringState = null;
-    let wiringNodes = [];
-    let isPanning = false, panStartX = 0, panStartY = 0, panOffX = 0, panOffY = 0;
-    let simRunning = false;
-    let simData = {};
-    let currentStage = 0;
-    let electrons = [];
-    let animFrame = null;
-    let shortCircuit = false;
-    let hoverTerminal = null;
-    let hoverWire = null;
-    let lastMouseWorld = {x:0, y:0};
-    let dragPartType = null;
-    let toastTimer;
-    let lastClickTime = 0, lastClickPart = null;
-
-    const PART_DEFS = {
-      battery:  { label:'배터리',  color:'#ffb800', defaultVal:9,    unit:'V',   terminals:[{dx:-1,dy:0,dir:'neg'},{dx:1,dy:0,dir:'pos'}] },
-      resistor: { label:'저항',    color:'#f97316', defaultVal:100,  unit:'Ω',   terminals:[{dx:-1,dy:0},{dx:1,dy:0}] },
-      led:      { label:'LED',     color:'#00ff88', defaultVal:2.0,  unit:'Vf',  terminals:[{dx:-1,dy:0,dir:'anode'},{dx:1,dy:0,dir:'cathode'}] },
-      switch:   { label:'스위치',  color:'#60a5fa', defaultVal:1,    unit:'',    terminals:[{dx:-1,dy:0},{dx:1,dy:0}] },
-      bulb:     { label:'전구',    color:'#fde68a', defaultVal:5,    unit:'Ω',   terminals:[{dx:-1,dy:0},{dx:1,dy:0}] },
-      capacitor:{ label:'커패시터',color:'#a78bfa', defaultVal:100,  unit:'μF',  terminals:[{dx:-1,dy:0},{dx:1,dy:0}] },
-      wire_node:{ label:'노드',    color:'#94a3b8', defaultVal:0,    unit:'',    terminals:[{dx:0,dy:-1},{dx:1,dy:0},{dx:0,dy:1},{dx:-1,dy:0}] },
-    };
-
-    const INVENTORY = [
-      {type:'battery', label:'배터리\n(9V)'},
-      {type:'resistor', label:'저항\n(100Ω)'},
-      {type:'led', label:'LED\n(2V)'},
-      {type:'switch', label:'스위치'},
-      {type:'bulb', label:'전구\n(5Ω)'},
-      {type:'capacitor', label:'커패시터\n(100μF)'},
-      {type:'wire_node', label:'분기\n노드'},
-    ];
-
-    const STAGES = [
-      {
-        title: '첫 번째 불빛',
-        desc: '배터리와 전구를 연결하여 회로를 완성하고 전구에 불을 켜세요.',
-        goals: [
-          {text:'배터리를 배치하세요', check: s => s.parts.some(p=>p.type==='battery')},
-          {text:'전구를 배치하세요', check: s => s.parts.some(p=>p.type==='bulb')},
-          {text:'회로를 완성하고 전구를 켜세요', check: s => s.simRunning && Object.values(s.simData).some(d=>d.i>0)},
-        ],
-        hint: '배터리의 + 단자에서 전구를 거쳐 - 단자로 연결하세요.',
-        parts: [{type:'battery',x:-120,y:0},{type:'bulb',x:120,y:0}],
-      },
-      {
-        title: '직렬 회로',
-        desc: 'LED 3개를 직렬로 연결하고 동시에 켜세요. 저항을 반드시 사용하세요.',
-        goals: [
-          {text:'LED를 3개 이상 배치하세요', check: s => s.parts.filter(p=>p.type==='led').length >= 3},
-          {text:'저항을 배치하세요', check: s => s.parts.some(p=>p.type==='resistor')},
-          {text:'모든 LED에 전류가 흐르게 하세요', check: s => {
-            const leds=s.parts.filter(p=>p.type==='led');
-            return leds.length>=3 && leds.every(l=>s.simData[l.id]?.i>0);
-          }},
-        ],
-        hint: '직렬 연결에서는 같은 전류가 모든 부품을 통과합니다.',
-        parts: [],
-      },
-      {
-        title: '병렬 회로',
-        desc: '저항 2개를 병렬로 연결하여 총 저항을 줄이세요.',
-        goals: [
-          {text:'저항을 2개 이상 배치하세요', check: s => s.parts.filter(p=>p.type==='resistor').length >= 2},
-          {text:'배터리를 연결하세요', check: s => s.parts.some(p=>p.type==='battery')},
-          {text:'회로에 전류가 흐르게 하세요', check: s => Object.values(s.simData).some(d=>d.i>0)},
-        ],
-        hint: '병렬 연결에서는 분기 노드를 사용해보세요.',
-        parts: [],
-      },
-      {
-        title: '정밀 전류 제어',
-        desc: '배터리 9V에서 전류를 정확히 0.05A로 맞추세요.',
-        goals: [
-          {text:'배터리(9V)를 배치하세요', check: s => s.parts.some(p=>p.type==='battery' && p.value===9)},
-          {text:'저항값을 조정하세요', check: s => s.parts.some(p=>p.type==='resistor')},
-          {text:'전류를 0.04A~0.06A로 맞추세요', check: s => Object.values(s.simData).some(d=>d.i>=0.04 && d.i<=0.06)},
-        ],
-        hint: '옴의 법칙: R = V / I = 180Ω.',
-        parts: [{type:'battery',x:-160,y:0},{type:'resistor',x:0,y:0}],
-      },
-      {
-        title: '자유 설계 모드',
-        desc: '제한 없이 원하는 회로를 설계해보세요!',
-        goals: [{text:'마음껏 즐기세요 😊', check: ()=>true}],
-        hint: '모든 부품을 자유롭게 사용하세요.',
-        parts: [],
-      },
-    ];
-
-    function init() {
-      canvas = document.getElementById('main-canvas');
-      ctx = canvas.getContext('2d');
-      overlay = document.getElementById('overlay-canvas');
-      octx = overlay.getContext('2d');
-      resize();
-      window.addEventListener('resize', resize);
-      setupCanvasEvents();
-      setupKeyboard();
-      buildInventoryUI();
-      loadStage(0);
-      setTool('select');
-      startRenderLoop();
-    }
-
-    function resize() {
-      const area = document.getElementById('canvas-area');
-      if (!area) return;
-      W = area.clientWidth;
-      H = area.clientHeight;
-      canvas.width = W;
-      canvas.height = H;
-      overlay.width = W;
-      overlay.height = H;
-      resetView();
-    }
-
-    function resetView() {
-      scale = 1;
-      offsetX = W / 2;
-      offsetY = H / 2;
-      updateZoomLabel();
-      render();
-    }
-
-    function zoom(factor, cx, cy) {
-      if (cx === undefined) { cx = W/2; cy = H/2; }
-      const newScale = Math.max(0.3, Math.min(3, scale * factor));
-      offsetX = cx - (cx - offsetX) * (newScale / scale);
-      offsetY = cy - (cy - offsetY) * (newScale / scale);
-      scale = newScale;
-      updateZoomLabel();
-      render();
-    }
-
-    function updateZoomLabel() {
-      const el = document.getElementById('zoom-label');
-      if (el) el.textContent = Math.round(scale * 100) + '%';
-    }
-
-    function toWorld(sx, sy) { return { x: (sx - offsetX) / scale, y: (sy - offsetY) / scale }; }
-    function snapGrid(v) { return Math.round(v / GRID) * GRID; }
-    function snapPoint(wx, wy) { return { x: snapGrid(wx), y: snapGrid(wy) }; }
-
-    function setTool(t) {
-      tool = t;
-      if (t !== 'wire') {
-        wiringState = null;
-        wiringNodes = [];
-      }
-      ['select','wire','delete','meter'].forEach(bt => {
-        const el = document.getElementById('btn-' + bt);
-        if (el) el.classList.toggle('active', bt === t);
-      });
-      const mi = document.getElementById('mode-indicator');
-      const modes = {
-        wire:'wire-mode',
-        meter:'meter-mode',
-        delete:'delete-mode'
-      };
-      const labels = {
-        wire:'🔌 와이어 모드',
-        meter:'⚡ 멀티미터 모드',
-        delete:'✕ 삭제 모드'
-      };
-      if (modes[t]) {
-        mi.className = 'visible ' + modes[t];
-        mi.textContent = labels[t];
-      } else {
-        mi.className = '';
-      }
-      render();
-    }
-
-    function clearCanvas() {
-      parts = [];
-      wires = [];
-      selectedPart = null;
-      selectedWire = null;
-      electrons = [];
-      simData = {};
-      shortCircuit = false;
-      wiringState = null;
-      wiringNodes = [];
-      if (simRunning) toggleSimulation();
-      selectPart(null);
-      render();
-    }
-
-    function addPart(type, x, y) {
-      const def = PART_DEFS[type];
-      if (!def) return null;
-      const p = {
-        id: 'p' + (nextId++),
-        type, x, y, rot: 0,
-        value: def.defaultVal,
-        label: def.label,
-        on: type === 'switch' ? false : true
-      };
-      parts.push(p);
-      if (simRunning) runSimulation();
-      return p;
-    }
-
-    function findPartAt(wx, wy) {
-      for (let i = parts.length - 1; i >= 0; i--) {
-        const p = parts[i];
-        if (p.type === 'wire_node') {
-          if (Math.hypot(wx - p.x, wy - p.y) < 12) return p;
-        } else {
-          const cos = Math.cos(-p.rot * Math.PI / 2), sin = Math.sin(-p.rot * Math.PI / 2);
-          const dx = wx - p.x, dy = wy - p.y;
-          const lx = dx * cos - dy * sin, ly = dx * sin + dy * cos;
-          if (Math.abs(lx) < GRID * 1.1 && Math.abs(ly) < GRID * 0.7) return p;
-        }
-      }
-      return null;
-    }
-
-    function getTerminals(part) {
-      const def = PART_DEFS[part.type];
-      if (!def) return [];
-      const cos = Math.cos(part.rot * Math.PI / 2), sin = Math.sin(part.rot * Math.PI / 2);
-      return def.terminals.map((t, i) => {
-        const rx = t.dx * GRID, ry = t.dy * GRID;
-        return {
-          id: part.id + '_t' + i,
-          partId: part.id,
-          wx: part.x + rx * cos - ry * sin,
-          wy: part.y + rx * sin + ry * cos,
-          dir: t.dir
+        const STATE = {
+            isRunning: true,
+            distance: 0,       // arbitrary units, converted to Ly for display
+            speed: 0,          // fraction of c (speed of light). 1.0 = c
+            maxSpeedLimit: 0.001, // determined by engine
+            energy: 100,
+            maxEnergy: 100,
+            darkMatter: 0,     // currency for upgrades
+            stageIndex: 0,
+            isThrusting: false,
+            playerY: 0,        // -1 to 1 based on mouse
+            timeAlive: 0
         };
-      });
-    }
 
-    function findTerminalAt(wx, wy) {
-      for (const p of parts) {
-        for (const t of getTerminals(p)) {
-          if (Math.hypot(wx - t.wx, wy - t.wy) < 16) return t;
-        }
-      }
-      return null;
-    }
+        const ENGINES = [
+            { id: 0, name: "화학 로켓", desc: "지구 탈출용 기초 엔진", maxSpeed: 0.005, thrust: 0.0001, cost: 0, color: '#ffaa00' },
+            { id: 1, name: "이온 엔진", desc: "지속 가속, 태양계 항해", maxSpeed: 0.05, thrust: 0.0005, cost: 50, color: '#00ffff' },
+            { id: 2, name: "핵융합 엔진", desc: "성간 여행용 고출력", maxSpeed: 0.3, thrust: 0.002, cost: 300, color: '#ff00ff' },
+            { id: 3, name: "반물질 엔진", desc: "아광속 진입 가능", maxSpeed: 0.95, thrust: 0.01, cost: 1500, color: '#aa00ff' },
+            { id: 4, name: "워프 드라이브", desc: "공간 왜곡, 광속 돌파", maxSpeed: 5.0, thrust: 0.05, cost: 10000, color: '#ffffff' },
+            { id: 5, name: "궁극의 이창형창형 엔진", desc: "관측 우주를 초월하는 궁극의 추진력", maxSpeed: 30, thrust: 1.3, cost: 45000, color: '#ff0000' },
+            { id: 6, name: "궁극의 여호선호선 엔진", desc: "우주 여행에 마침표를 찍다, Q.E.D.", maxSpeed: 300, thrust: 45, cost: 111111, color: '#ff0000' }
+        ];
 
-    function updateWiresForPart(part) {
-      const terms = getTerminals(part);
-      for (const w of wires) {
-        for (const t of terms) {
-          if (w.from === t.id && w.nodes.length > 0) w.nodes[0] = { x: t.wx, y: t.wy };
-          if (w.to === t.id && w.nodes.length > 1) w.nodes[w.nodes.length - 1] = { x: t.wx, y: t.wy };
-        }
-      }
-    }
+        let currentEngine = 0;
 
-    function rotateSelected() {
-      if (!selectedPart) return;
-      selectedPart.rot = (selectedPart.rot + 1) % 4;
-      updateWiresForPart(selectedPart);
-      if (simRunning) runSimulation();
-      render();
-    }
+        const STAGES = [
+            { dist: 0, name: "Stage 1: 대기권 돌파", desc: "중력을 이겨내고 궤도에 진입하는 기초 단계." },
+            { dist: 100, name: "Stage 2: 태양계 항해", desc: "행성들의 중력 도움(Sling-shot)을 이용해 가속." },
+            { dist: 1000, name: "Stage 3: 성간 여행", desc: "태양계를 벗어나 빛의 속도(c)에 도전하는 단계." },
+            { dist: 5000, name: "Stage 4: 은하 탈출", desc: "우리 은하를 벗어나 심우주로 진입." },
+            { dist: 20000, name: "Final: 지평선 너머", desc: "관측 가능한 우주의 끝을 향하여." },
+            { dist: 50000, name: "THE END", desc: "" } // Win condition
+        ];
 
-    function removePart(id) {
-      parts = parts.filter(p => p.id !== id);
-      wires = wires.filter(w => !w.from?.startsWith(id) && !w.to?.startsWith(id));
-      if (selectedPart?.id === id) selectPart(null);
-      if (simRunning) runSimulation();
-    }
+        // Constants
+        const C_SPEED_UNIT = 1; // Representation of light speed in internal units
 
-    function deleteSelected() {
-      if (selectedPart) {
-        removePart(selectedPart.id);
-        render();
-        return;
-      }
-      if (selectedWire) {
-        const idx = wires.findIndex(w => w.id === selectedWire.id);
-        if (idx !== -1) removeWire(idx);
-        selectedWire = null;
-        render();
-      }
-    }
-
-    function selectPart(p) {
-      selectedPart = p;
-      selectedWire = null;
-      const empty = document.getElementById('props-empty');
-      const content = document.getElementById('props-content');
-      const simGroup = document.getElementById('prop-sim-group');
-      if (!p) {
-        if (empty) empty.style.display = '';
-        if (content) content.style.display = 'none';
-        return;
-      }
-      empty.style.display = 'none';
-      content.style.display = '';
-      document.getElementById('prop-type').textContent = PART_DEFS[p.type]?.label || p.type;
-      document.getElementById('prop-id').textContent = p.id;
-      const def = PART_DEFS[p.type];
-      const vg = document.getElementById('prop-value-group');
-      if (def && def.unit) {
-        document.getElementById('prop-val-label').textContent = def.label + ' 값';
-        document.getElementById('prop-val-input').value = p.value;
-        document.getElementById('prop-val-unit').textContent = def.unit;
-        vg.style.display = '';
-      } else {
-        vg.style.display = 'none';
-      }
-      if (simRunning && simData[p.id]) {
-        const d = simData[p.id];
-        simGroup.style.display = '';
-        document.getElementById('prop-voltage').textContent = d.v.toFixed(2) + 'V';
-        document.getElementById('prop-current').textContent = d.i.toFixed(3) + 'A';
-        document.getElementById('prop-power').textContent = d.p.toFixed(3) + 'W';
-      } else {
-        simGroup.style.display = 'none';
-      }
-      render();
-    }
-
-    function selectWire(w) {
-      selectedWire = w;
-      selectedPart = null;
-      document.getElementById('props-empty').style.display = '';
-      document.getElementById('props-content').style.display = 'none';
-      render();
-    }
-
-    function updatePartValue(v) {
-      if (!selectedPart) return;
-      selectedPart.value = parseFloat(v) || 0;
-      if (simRunning) runSimulation();
-      render();
-    }
-
-    function removeWire(idx) {
-      wires.splice(idx, 1);
-      if (simRunning) runSimulation();
-      electrons = electrons.filter(e => wires.find(w => w.id === e.wireId));
-    }
-
-    function findWireAt(wx, wy) {
-      const THRESH = 6;
-      for (let i = wires.length - 1; i >= 0; i--) {
-        const w = wires[i];
-        for (let j = 0; j < w.nodes.length - 1; j++) {
-          const ax = w.nodes[j].x, ay = w.nodes[j].y;
-          const bx = w.nodes[j+1].x, by = w.nodes[j+1].y;
-          const len2 = (bx-ax)**2 + (by-ay)**2;
-          if (len2 < 1) continue;
-          const t = Math.max(0, Math.min(1, ((wx-ax)*(bx-ax)+(wy-ay)*(by-ay))/len2));
-          const dist = Math.hypot(wx - ax - t*(bx-ax), wy - ay - t*(by-ay));
-          if (dist < THRESH) return i;
-        }
-      }
-      return null;
-    }
-
-    function finalizeWire(endTerm) {
-      if (wiringNodes.length < 2) { wiringState = null; wiringNodes = []; return; }
-      const startTerm = findTerminalAt(wiringNodes[0].x, wiringNodes[0].y);
-      const nodes = [...wiringNodes];
-      if (endTerm) nodes[nodes.length - 1] = { x: endTerm.wx, y: endTerm.wy };
-      const w = { id:'w' + (nextId++), nodes, from: startTerm?.id || null, to: endTerm?.id || null };
-      wires.push(w);
-      if (simRunning) {
-        electrons.push({ wireId:w.id, t:Math.random(), speed:0.004, dir:1 });
-        runSimulation();
-      }
-      wiringState = null;
-      wiringNodes = [];
-      checkMission();
-    }
-
-    function toggleSimulation() {
-      simRunning = !simRunning;
-      const badge = document.getElementById('sim-badge');
-      const btnText = document.getElementById('btn-sim');
-      if (simRunning) {
-        runSimulation();
-        badge.className = 'sim-badge running';
-        document.getElementById('sim-text').textContent = '시뮬레이션 실행 중';
-        btnText.textContent = '정지';
-        electrons = wires.map(w => ({ wireId:w.id, t:Math.random(), speed:0.003 + Math.random()*0.002, dir:1 }));
-      } else {
-        simData = {};
-        shortCircuit = false;
-        badge.className = 'sim-badge off';
-        document.getElementById('sim-text').textContent = '시뮬레이션 중지';
-        btnText.textContent = '실행';
-        electrons = [];
-        updateMeterDisplay(null);
-      }
-      render();
-    }
-
-    function runSimulation() {
-      if (!simRunning) return;
-      shortCircuit = false;
-      simData = {};
-      const batteries = parts.filter(p => p.type === 'battery');
-      if (!batteries.length) { updateMeterDisplay(null); return; }
-
-      const termMap = {};
-      for (const p of parts) for (const t of getTerminals(p)) termMap[t.id] = { ...t };
-
-      const graph = {};
-      const posKey = (x,y) => `${Math.round(x)},${Math.round(y)}`;
-      function ensureNode(key) { if (!graph[key]) graph[key] = { termIds:[], wires:[] }; }
-
-      for (const w of wires) {
-        if (w.nodes.length < 2) continue;
-        const a = w.nodes[0], b = w.nodes[w.nodes.length - 1];
-        const ka = posKey(a.x, a.y), kb = posKey(b.x, b.y);
-        ensureNode(ka); ensureNode(kb);
-        if (!graph[ka].wires.includes(kb)) graph[ka].wires.push(kb);
-        if (!graph[kb].wires.includes(ka)) graph[kb].wires.push(ka);
-      }
-
-      for (const p of parts) {
-        for (const t of getTerminals(p)) {
-          const k = posKey(t.wx, t.wy);
-          ensureNode(k);
-          if (!graph[k].termIds.includes(t.id)) graph[k].termIds.push(t.id);
-        }
-      }
-
-      let totalV = 0, totalR = 0, circuitI = 0;
-      let circuitClosed = false;
-
-      for (const bat of batteries) {
-        const ts = getTerminals(bat);
-        if (ts.length < 2) continue;
-        const negTerm = ts[0], posTerm = ts[1];
-        const startKey = posKey(posTerm.wx, posTerm.wy);
-        const endKey = posKey(negTerm.wx, negTerm.wy);
-        totalV += bat.value;
-
-        const visited = new Set();
-        const stack = [[startKey, []]];
-        let found = false;
-        let pathParts = [];
-
-        while (stack.length) {
-          const [cur, pathSoFar] = stack.pop();
-          if (visited.has(cur)) continue;
-          visited.add(cur);
-
-          if (cur === endKey && pathSoFar.length > 0) {
-            found = true;
-            pathParts = pathSoFar;
-            break;
-          }
-
-          if (graph[cur]) {
-            for (const tId of graph[cur].termIds) {
-              const t = termMap[tId];
-              if (!t) continue;
-              const p = parts.find(pp => pp.id === t.partId);
-              if (!p || p.id === bat.id) continue;
-              if (p.type === 'switch' && !p.on) continue;
-
-              const allT = getTerminals(p);
-              for (const otherT of allT) {
-                if (otherT.id === tId) continue;
-                const ok = posKey(otherT.wx, otherT.wy);
-                if (!visited.has(ok)) stack.push([ok, [...pathSoFar, p.id]]);
-              }
+        /**
+         * Canvas Rendering Entities
+         */
+        
+        // Stars for Parallax and Doppler effect
+        class Star {
+            constructor() {
+                this.reset(true);
             }
-            for (const nk of graph[cur].wires) {
-              if (!visited.has(nk)) stack.push([nk, pathSoFar]);
+            reset(randomX = false) {
+                this.x = randomX ? Math.random() * cw : cw + Math.random() * 100;
+                this.y = Math.random() * ch;
+                this.z = Math.random() * 2 + 0.1; // Depth (parallax)
+                this.size = Math.random() * 1.5 + 0.5;
+                this.baseAlpha = Math.random() * 0.5 + 0.3;
             }
-          }
+            update(speedX) {
+                // Parallax: closer stars move faster
+                this.x -= (speedX * 50 / this.z) + 0.5; 
+                
+                // Wrap around
+                if (this.x < 0) {
+                    this.reset(false);
+                    // Passively gain dark matter from 'collecting' stardust over distance
+                    if(Math.random() < 0.05) STATE.darkMatter += 1;
+                }
+            } 
+        // draw 메서드를 꼭 클래스 안에 정의해야 함
+            draw(ctx, shipX, shipSpeed) {
+                let r = 255, g = 255, b = 255;
+                const speedRatio = shipSpeed;
+        
+                // 15c 이상 → 가시광선 밖 → 회색만 보임
+                if (speedRatio > 15) {
+                    r = 51;   // #333333
+                    g = 51;
+                    b = 51;
+                    // Doppler 계산 skip
+                } else {
+                    // 15c 이하일 때만 앞/뒤 색 변환 적용
+                    const isBehind = this.x < shipX;
+                    const isAhead  = this.x > shipX;
+        
+                    if (speedRatio > 0.1) {
+                        const shiftStrength = Math.min(1.0, speedRatio * 2);
+        
+                        if (isBehind) {
+                            r = 255;
+                            g = Math.max(0, 255 - (shiftStrength * 150));
+                            b = Math.max(0, 255 - (shiftStrength * 180));
+                        } else if (isAhead) {
+                            r = Math.max(0, 255 - (shiftStrength * 180));
+                            g = Math.max(0, 255 - (shiftStrength * 100));
+                            b = 255;
+                        }
+                    }
+                }
+        
+                let stretch = 1 + (speedRatio * 10 / this.z);
+        
+                ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${this.baseAlpha})`;
+                ctx.beginPath();
+                ctx.ellipse(this.x, this.y, stretch * this.size, this.size, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
         }
 
-        if (found) {
-          circuitClosed = true;
-          let R = 0;
-          for (const pid of pathParts) {
-            const p = parts.find(pp => pp.id === pid);
-            if (!p) continue;
-            if (p.type === 'resistor') R += p.value;
-            else if (p.type === 'led') R += 50;
-            else if (p.type === 'bulb') R += p.value;
-          }
-          if (R < 0.01) { shortCircuit = true; R = 0.01; }
-          totalR += R;
-          circuitI = totalV / totalR;
-          if (circuitI > 10) { shortCircuit = true; circuitI = 10; }
 
-          for (const pid of pathParts) {
-            const p = parts.find(pp => pp.id === pid);
-            if (!p) continue;
-            let r = 0;
-            if (p.type === 'resistor') r = p.value;
-            else if (p.type === 'led') r = 50;
-            else if (p.type === 'bulb') r = p.value;
-            const vDrop = circuitI * r;
-            simData[pid] = { v:vDrop, i:circuitI, r:r, p:vDrop * circuitI };
-          }
-          simData[bat.id] = { v:bat.value, i:circuitI, r:0, p:bat.value * circuitI };
-        }
-      }
+        // Celestial Bodies (Planets, Black Holes)
+        let celestialObjects = [];
+        class CelestialObject {
+            constructor(type, x, y) {
+                this.type = type; // 'planet', 'blackhole', 'pulsar'
+                this.x = x || cw + 200;
+                this.y = y || Math.random() * ch;
+                this.passed = false;
+                
+                if (this.type === 'planet') {
+                    this.radius = Math.random() * 40 + 20;
+                    this.mass = this.radius * 2;
+                    this.color = `hsl(${Math.random() * 360}, 60%, 40%)`;
+                } else if (this.type === 'blackhole') {
+                    this.radius = 30;
+                    this.mass = 500; // High gravity
+                    this.eventHorizon = 40;
+                }
+            }
 
-      const speedBase = Math.min(circuitI * 0.003, 0.015);
-      electrons.forEach(e => { e.speed = speedBase + 0.001; });
+            update(shipSpeed) {
+                // Move relative to ship speed. Base abstract speed + ship speed
+                this.x -= (shipSpeed * 30) + 2;
 
-      if (circuitClosed) {
-        document.getElementById('total-v').textContent = totalV.toFixed(1) + ' V';
-        document.getElementById('total-r').textContent = totalR.toFixed(1) + ' Ω';
-        document.getElementById('total-i').textContent = circuitI.toFixed(3) + ' A';
-        document.getElementById('total-p').textContent = (totalV * circuitI).toFixed(2) + ' W';
-      } else {
-        updateMeterDisplay(null);
-      }
-      if (selectedPart) selectPart(selectedPart);
-      checkMission();
-    }
+                // Player interaction mechanics
+                let dx = (cw * 0.2) - this.x; // Player is roughly at x = 20% of screen width
+                let dy = (ch / 2 + STATE.playerY * ch / 2) - this.y;
+                let distSq = dx*dx + dy*dy;
+                let dist = Math.sqrt(distSq);
 
-    function updateMeterDisplay() {
-      ['total-v','total-r','total-i','total-p'].forEach(id => document.getElementById(id).textContent = '—');
-    }
+                if (!this.passed && this.x < cw * 0.2) {
+                    this.passed = true;
+                    // Trigger narrative log based on passing
+                    if(this.type === 'planet') logEvent(`행성 근접 통과. 중력 도움(Sling-shot) 활용. 가속 보너스 획득.`);
+                    if(this.type === 'blackhole') logEvent(`블랙홀 탈출 성공. 극한의 중력 스윙바이로 대량 가속!`, 'text-red-400');
+                }
 
-    function startRenderLoop() {
-      function loop() {
-        if (simRunning) {
-          electrons.forEach(e => {
-            e.t += e.speed * e.dir;
-            if (e.t > 1) e.t -= 1;
-            if (e.t < 0) e.t += 1;
-          });
-        }
-        render();
-        animFrame = requestAnimationFrame(loop);
-      }
-      loop();
-    }
+                // Gravity effect
+                if (dist < 400 && this.x > 0) {
+                    let force = this.mass / distSq;
+                    if (this.type === 'planet') {
+                        // Sling-shot assist
+                        STATE.speed += force * 0.001 * (1 + STATE.speed);
+                        STATE.darkMatter += 5; // Reward
+                    } else if (this.type === 'blackhole') {
+                        // Dangerous pull
+                        STATE.speed -= force * 0.005; // slows forward momentum
+                        // Pull player vertically towards it visually (simulated by affecting Y)
+                        if (dist < this.eventHorizon) {
+                             STATE.speed *= 0.8; // Massive penalty
+                             STATE.energy -= 1;
+                             if(Math.random()<0.1) logEvent(`[경고] 사건의 지평선 접근! 엔진 출력 급감!`, 'text-red-500 font-bold');
+                        } else if (dist < 150) {
+                             // Perfect graze boost
+                             STATE.speed += force * 0.008;
+                        }
+                    }
+                }
+            }
 
-    function circuitHasWire(w) {
-      if (!w.from && !w.to) return false;
-      const fromPartId = w.from?.split('_t')[0];
-      const toPartId = w.to?.split('_t')[0];
-      return !!(simData[fromPartId] || simData[toPartId]);
-    }
+            draw(ctx) {
+                if (this.type === 'planet') {
+                    // Planet atmosphere glow
+                    let gradient = ctx.createRadialGradient(this.x, this.y, this.radius*0.8, this.x, this.y, this.radius*1.2);
+                    gradient.addColorStop(0, this.color);
+                    gradient.addColorStop(1, 'rgba(0,0,0,0)');
+                    ctx.fillStyle = gradient;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius * 1.2, 0, Math.PI * 2);
+                    ctx.fill();
 
-    function polylinePoint(nodes, t) {
-      let segs = [];
-      let total = 0;
-      for (let i=0; i<nodes.length-1; i++) {
-        const l = Math.hypot(nodes[i+1].x - nodes[i].x, nodes[i+1].y - nodes[i].y);
-        segs.push(l); total += l;
-      }
-      if (total < 1) return null;
-      let rem = t * total;
-      for (let i=0; i<segs.length; i++) {
-        if (rem <= segs[i]) {
-          const frac = rem / segs[i];
-          return {
-            x: nodes[i].x + (nodes[i+1].x - nodes[i].x) * frac,
-            y: nodes[i].y + (nodes[i+1].y - nodes[i].y) * frac
-          };
-        }
-        rem -= segs[i];
-      }
-      return nodes[nodes.length - 1];
-    }
+                    // Solid planet
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (this.type === 'blackhole') {
+                    // Accretion disk (distorted light)
+                    ctx.save();
+                    ctx.translate(this.x, this.y);
+                    // Rotate disk slowly
+                    ctx.rotate(Date.now() / 1000);
+                    ctx.scale(1, 0.3); // Ellipse shape
 
-    function drawGrid() {
-      const step = GRID;
-      const vx0 = -offsetX / scale, vy0 = -offsetY / scale;
-      const vx1 = (W - offsetX) / scale, vy1 = (H - offsetY) / scale;
+                    let diskGrad = ctx.createRadialGradient(0, 0, this.radius, 0, 0, this.radius * 3);
+                    diskGrad.addColorStop(0, 'rgba(255, 100, 50, 0)');
+                    diskGrad.addColorStop(0.2, 'rgba(255, 150, 50, 0.8)');
+                    diskGrad.addColorStop(0.5, 'rgba(100, 150, 255, 0.4)');
+                    diskGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                    
+                    ctx.fillStyle = diskGrad;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.radius * 3, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
 
-      ctx.strokeStyle = 'rgba(30,45,74,0.7)';
-      ctx.lineWidth = 0.5 / scale;
-      const sx = Math.floor(vx0 / step) * step;
-      const sy = Math.floor(vy0 / step) * step;
-      for (let x = sx; x < vx1 + step; x += step) {
-        ctx.beginPath();
-        ctx.moveTo(x, vy0 - step);
-        ctx.lineTo(x, vy1 + step);
-        ctx.stroke();
-      }
-      for (let y = sy; y < vy1 + step; y += step) {
-        ctx.beginPath();
-        ctx.moveTo(vx0 - step, y);
-        ctx.lineTo(vx1 + step, y);
-        ctx.stroke();
-      }
-    }
-
-    function drawParts() {
-      for (const p of parts) {
-        ctx.save();
-        ctx.translate(p.x, p.y);
-        ctx.rotate(p.rot * Math.PI / 2);
-        drawPartOnCtx(ctx, p, 0, 0);
-        ctx.restore();
-      }
-    }
-
-    function drawPartOnCtx(c, p) {
-      const sd = simRunning && simData[p.id] ? simData[p.id] : null;
-      switch (p.type) {
-        case 'battery': drawBattery(c, p, sd); break;
-        case 'resistor': drawResistor(c, p, sd); break;
-        case 'led': drawLED(c, p, sd); break;
-        case 'switch': drawSwitch(c, p, sd); break;
-        case 'bulb': drawBulb(c, p, sd); break;
-        case 'capacitor': drawCapacitor(c, p, sd); break;
-        case 'wire_node': drawWireNode(c, p, sd); break;
-      }
-    }
-
-    const S = GRID;
-
-    function drawBattery(c, p, sd) {
-      c.strokeStyle = '#94a3b8'; c.lineWidth = 2; c.lineCap='round';
-      c.beginPath(); c.moveTo(-S, 0); c.lineTo(-S*0.35, 0); c.stroke();
-      c.beginPath(); c.moveTo(S*0.35, 0); c.lineTo(S, 0); c.stroke();
-      const col1 = sd ? '#ffb800' : '#6b7280';
-      const col2 = sd ? '#f97316' : '#4b5563';
-      c.strokeStyle = col1; c.lineWidth = 3;
-      c.beginPath(); c.moveTo(-S*0.35, -S*0.4); c.lineTo(-S*0.35, S*0.4); c.stroke();
-      c.strokeStyle = col2; c.lineWidth = 6;
-      c.beginPath(); c.moveTo(S*0.35, -S*0.55); c.lineTo(S*0.35, S*0.55); c.stroke();
-      c.fillStyle = sd ? '#ffb800' : '#6b7280'; c.font = `bold 10px JetBrains Mono`; c.textAlign='center';
-      c.fillText('+', S*0.7, -S*0.4);
-      c.fillText('−', -S*0.7, -S*0.4);
-      c.fillStyle = '#94a3b8'; c.font = `9px Space Grotesk`; c.textAlign='center';
-      c.fillText(p.value+'V', 0, S*0.55);
-    }
-
-    function drawResistor(c, p, sd) {
-      c.strokeStyle = '#94a3b8'; c.lineWidth = 2; c.lineCap='round';
-      c.beginPath(); c.moveTo(-S, 0); c.lineTo(-S*0.4, 0); c.stroke();
-      c.beginPath(); c.moveTo(S*0.4, 0); c.lineTo(S, 0); c.stroke();
-      const col = sd ? '#f97316' : '#6b7280';
-      c.strokeStyle = col; c.lineWidth = 2;
-      c.beginPath();
-      c.moveTo(-S*0.4, 0);
-      const steps = 7, sw = S * 0.8 / steps;
-      for (let i=0; i<steps; i++) c.lineTo(-S*0.4 + (i+0.5)*sw, (i%2===0?-1:1)*S*0.25);
-      c.lineTo(S*0.4, 0);
-      c.stroke();
-      c.fillStyle = '#94a3b8'; c.font = `9px Space Grotesk`; c.textAlign='center';
-      c.fillText(p.value+'Ω', 0, S*0.55);
-    }
-
-    function drawLED(c, p, sd) {
-      c.strokeStyle = '#94a3b8'; c.lineWidth = 2; c.lineCap='round';
-      c.beginPath(); c.moveTo(-S, 0); c.lineTo(-S*0.35, 0); c.stroke();
-      c.beginPath(); c.moveTo(S*0.35, 0); c.lineTo(S, 0); c.stroke();
-      const brightness = sd ? Math.min(sd.i / 0.02, 1) : 0;
-      const col = `rgba(0,255,136,${0.3 + brightness * 0.7})`;
-      c.fillStyle = col; c.strokeStyle = col; c.lineWidth = 1.5;
-      c.beginPath(); c.moveTo(-S*0.35, -S*0.32); c.lineTo(-S*0.35, S*0.32); c.lineTo(S*0.35, 0); c.closePath(); c.fill(); c.stroke();
-      c.strokeStyle = col; c.lineWidth = 2;
-      c.beginPath(); c.moveTo(S*0.35, -S*0.32); c.lineTo(S*0.35, S*0.32); c.stroke();
-      c.fillStyle = '#94a3b8'; c.font = `9px Space Grotesk`; c.textAlign='center';
-      c.fillText(p.value+'Vf', 0, S*0.55);
-    }
-
-    function drawSwitch(c, p) {
-      c.strokeStyle = '#94a3b8'; c.lineWidth = 2; c.lineCap='round';
-      c.beginPath(); c.moveTo(-S, 0); c.lineTo(-S*0.35, 0); c.stroke();
-      c.beginPath(); c.moveTo(S*0.35, 0); c.lineTo(S, 0); c.stroke();
-      const col = p.on ? '#60a5fa' : '#4b5563';
-      c.fillStyle = col; c.beginPath(); c.arc(-S*0.35, 0, 4, 0, Math.PI*2); c.fill();
-      c.fillStyle = col; c.beginPath(); c.arc(S*0.35, 0, 4, 0, Math.PI*2); c.fill();
-      c.strokeStyle = col; c.lineWidth = 2.5;
-      c.beginPath(); c.moveTo(-S*0.35, 0); c.lineTo(S*0.35, p.on ? 0 : -S*0.3); c.stroke();
-      c.fillStyle = '#94a3b8'; c.font = `9px Space Grotesk`; c.textAlign='center';
-      c.fillText(p.on ? '닫힘' : '열림', 0, S*0.55);
-    }
-
-    function drawBulb(c, p, sd) {
-      c.strokeStyle = '#94a3b8'; c.lineWidth = 2; c.lineCap='round';
-      c.beginPath(); c.moveTo(-S, 0); c.lineTo(-S*0.3, 0); c.stroke();
-      c.beginPath(); c.moveTo(S*0.3, 0); c.lineTo(S, 0); c.stroke();
-      const brightness = sd ? Math.min(sd.i * sd.v / 3, 1) : 0;
-      if (brightness > 0.05) {
-        c.save();
-        const grad = c.createRadialGradient(0,0,0,0,0,S*0.6);
-        grad.addColorStop(0, `rgba(255,255,200,${brightness*0.6})`);
-        grad.addColorStop(1, 'transparent');
-        c.fillStyle = grad;
-        c.beginPath(); c.arc(0,0,S*0.8,0,Math.PI*2); c.fill();
-        c.shadowColor='#fde68a'; c.shadowBlur=25*brightness;
-        c.restore();
-      }
-      c.strokeStyle = brightness > 0 ? `rgba(253,230,138,${0.5+brightness*0.5})` : '#4a5568';
-      c.lineWidth = 2;
-      c.beginPath(); c.arc(0, -S*0.05, S*0.28, 0, Math.PI*2); c.stroke();
-      c.fillStyle = brightness > 0 ? `rgba(253,230,138,${0.2+brightness*0.8})` : 'rgba(74,85,104,0.3)';
-      c.beginPath(); c.arc(0, -S*0.05, S*0.28, 0, Math.PI*2); c.fill();
-    }
-
-    function drawCapacitor(c, p) {
-      c.strokeStyle = '#94a3b8'; c.lineWidth = 2; c.lineCap='round';
-      c.beginPath(); c.moveTo(-S, 0); c.lineTo(-S*0.12, 0); c.stroke();
-      c.beginPath(); c.moveTo(S*0.12, 0); c.lineTo(S, 0); c.stroke();
-      c.strokeStyle = '#a78bfa'; c.lineWidth = 4;
-      c.beginPath(); c.moveTo(-S*0.12, -S*0.4); c.lineTo(-S*0.12, S*0.4); c.stroke();
-      c.beginPath(); c.moveTo(S*0.12, -S*0.4); c.lineTo(S*0.12, S*0.4); c.stroke();
-      c.fillStyle = '#94a3b8'; c.font = `9px Space Grotesk`; c.textAlign='center';
-      c.fillText(p.value+'μF', 0, S*0.65);
-    }
-
-    function drawWireNode(c) {
-      c.fillStyle = '#94a3b8';
-      c.beginPath(); c.arc(0, 0, 6, 0, Math.PI*2); c.fill();
-    }
-
-    function drawWires() {
-      for (const w of wires) {
-        if (w.nodes.length < 2) continue;
-        const isSelected = selectedWire?.id === w.id;
-        const isActive = simRunning && circuitHasWire(w);
-        ctx.save();
-        ctx.strokeStyle = isSelected ? '#fff' : (isActive ? '#00d4ff' : '#2a3d5c');
-        ctx.lineWidth = isSelected ? 3/scale : (isActive ? 2.5/scale : 2/scale);
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        if (shortCircuit && isActive) {
-          ctx.strokeStyle = '#ff3b5c';
-          ctx.shadowColor = '#ff3b5c';
-          ctx.shadowBlur = 8;
-        } else if (isActive) {
-          ctx.shadowColor = '#00d4ff';
-          ctx.shadowBlur = 6;
-        }
-        ctx.beginPath();
-        ctx.moveTo(w.nodes[0].x, w.nodes[0].y);
-        for (let i=1; i<w.nodes.length; i++) ctx.lineTo(w.nodes[i].x, w.nodes[i].y);
-        ctx.stroke();
-        ctx.restore();
-      }
-    }
-
-    function drawElectrons() {
-      if (!simRunning) return;
-      for (const e of electrons) {
-        const w = wires.find(ww => ww.id === e.wireId);
-        if (!w || w.nodes.length < 2) continue;
-        if (!circuitHasWire(w)) continue;
-        const pos = polylinePoint(w.nodes, e.t);
-        if (!pos) continue;
-        const r = 3/scale;
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(pos.x, pos.y, r, 0, Math.PI*2);
-        ctx.fillStyle = shortCircuit ? '#ff3b5c' : '#00ffcc';
-        ctx.shadowColor = shortCircuit ? '#ff3b5c' : '#00ffcc';
-        ctx.shadowBlur = 8/scale;
-        ctx.fill();
-        ctx.restore();
-      }
-    }
-
-    function drawWiringPreview() {
-      if (!wiringState) return;
-      const w = lastMouseWorld;
-      const snap = snapPoint(w.x, w.y);
-      const allNodes = [...wiringNodes, snap];
-      ctx.save();
-      ctx.strokeStyle = '#00d4ff';
-      ctx.lineWidth = 2/scale;
-      ctx.lineCap = 'round';
-      ctx.setLineDash([6/scale, 4/scale]);
-      ctx.shadowColor = '#00d4ff';
-      ctx.shadowBlur = 6;
-      ctx.beginPath();
-      ctx.moveTo(allNodes[0].x, allNodes[0].y);
-      for (let i=1; i<allNodes.length; i++) ctx.lineTo(allNodes[i].x, allNodes[i].y);
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    function drawOverlay() {
-      for (const p of parts) {
-        for (const t of getTerminals(p)) {
-          const isHover = hoverTerminal?.id === t.id;
-          const isWiring = tool === 'wire';
-          if (isHover || isWiring) {
-            octx.save();
-            octx.beginPath();
-            octx.arc(t.wx, t.wy, isHover ? 7/scale : 4/scale, 0, Math.PI*2);
-            octx.strokeStyle = isHover ? '#00d4ff' : 'rgba(0,212,255,0.4)';
-            octx.lineWidth = 2/scale;
-            if (isHover) { octx.shadowColor = '#00d4ff'; octx.shadowBlur = 12/scale; }
-            octx.stroke();
-            octx.restore();
-          }
-        }
-      }
-
-      if (selectedPart) {
-        const p = selectedPart;
-        octx.save();
-        octx.strokeStyle = '#fff';
-        octx.lineWidth = 2/scale;
-        octx.setLineDash([6/scale, 3/scale]);
-        const hw = GRID*1.1, hh = GRID*0.7;
-        octx.translate(p.x, p.y);
-        octx.rotate(p.rot * Math.PI/2);
-        octx.strokeRect(-hw, -hh, hw*2, hh*2);
-        octx.restore();
-      }
-    }
-
-    function render() {
-      if (!canvas || !ctx || !overlay || !octx) return;
-      ctx.clearRect(0, 0, W, H);
-      octx.clearRect(0, 0, W, H);
-      ctx.save();
-      ctx.translate(offsetX, offsetY);
-      ctx.scale(scale, scale);
-      drawGrid();
-      drawWires();
-      drawParts();
-      drawElectrons();
-      if (wiringState) drawWiringPreview();
-      ctx.restore();
-      octx.save();
-      octx.translate(offsetX, offsetY);
-      octx.scale(scale, scale);
-      drawOverlay();
-      octx.restore();
-    }
-
-    function showToast(msg, type='') {
-      const t = document.getElementById('toast');
-      t.textContent = msg;
-      t.className = 'show ' + type;
-      clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => t.className = '', 2500);
-    }
-
-    function showContextMenu(x, y) {
-      const m = document.getElementById('ctx-menu');
-      m.style.display = 'block';
-      m.style.left = x + 'px';
-      m.style.top = y + 'px';
-      document.addEventListener('click', hideContextMenu, { once: true });
-    }
-
-    function hideContextMenu() {
-      document.getElementById('ctx-menu').style.display = 'none';
-    }
-
-    function ctxAction(action) {
-      if (!selectedPart) return;
-      if (action === 'rotate') rotateSelected();
-      else if (action === 'flip') { selectedPart.rot = (selectedPart.rot + 2) % 4; render(); }
-      else if (action === 'delete') deleteSelected();
-      hideContextMenu();
-    }
-
-    function switchTab(name) {
-      document.querySelectorAll('#circuit-panel .tab').forEach((t, i) => {
-        const names = ['props', 'meter', 'mission'];
-        t.classList.toggle('active', names[i] === name);
-      });
-      document.querySelectorAll('#circuit-panel .tab-panel').forEach(tp => {
-        tp.classList.toggle('active', tp.id === 'tab-' + name);
-      });
-    }
-
-    function updateMeterDisplay() {
-      ['total-v','total-r','total-i','total-p'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.textContent = '—';
-      });
-    }
-
-    function buildInventoryUI() {
-      const grid = document.getElementById('part-inventory');
-      if (!grid) return;
-      grid.innerHTML = '';
-      INVENTORY.forEach(inv => {
-        const div = document.createElement('div');
-        div.className = 'part-item';
-        div.draggable = true;
-        div.dataset.type = inv.type;
-
-        const cv = document.createElement('canvas');
-        cv.width = 60; cv.height = 40;
-        cv.className = 'part-icon';
-        const c = cv.getContext('2d');
-        c.translate(30, 20);
-        c.strokeStyle = '#94a3b8';
-        c.fillStyle = '#94a3b8';
-        c.lineWidth = 2;
-        if (inv.type === 'battery') {
-          c.beginPath(); c.moveTo(-20,0); c.lineTo(-8,0); c.stroke();
-          c.beginPath(); c.moveTo(8,0); c.lineTo(20,0); c.stroke();
-          c.beginPath(); c.moveTo(-8,-8); c.lineTo(-8,8); c.stroke();
-          c.lineWidth = 4;
-          c.beginPath(); c.moveTo(8,-10); c.lineTo(8,10); c.stroke();
-        } else if (inv.type === 'resistor') {
-          c.beginPath(); c.moveTo(-20,0); c.lineTo(-10,0);
-          for (let i=0;i<7;i++) c.lineTo(-10 + i*5, (i%2===0?-1:1)*6);
-          c.lineTo(10,0); c.lineTo(20,0); c.stroke();
-        } else if (inv.type === 'led') {
-          c.beginPath(); c.moveTo(-20,0); c.lineTo(-8,0); c.stroke();
-          c.beginPath(); c.moveTo(8,0); c.lineTo(20,0); c.stroke();
-          c.beginPath(); c.arc(0,0,7,0,Math.PI*2); c.stroke();
-        } else {
-          c.beginPath(); c.arc(0,0,6,0,Math.PI*2); c.fill();
+                    // Event Horizon (Pitch black)
+                    ctx.fillStyle = '#000';
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Gravitational Lensing effect (simulated border)
+                    ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius + 5, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+            }
         }
 
-        const lbl = document.createElement('div');
-        lbl.className = 'part-label';
-        lbl.textContent = inv.label;
-        div.appendChild(cv);
-        div.appendChild(lbl);
+        // Particle system for engine exhaust
+        let particles = [];
+        class Particle {
+            constructor(x, y, speedY, color) {
+                this.x = x;
+                this.y = y;
+                this.vx = -Math.random() * 5 - 2 - (STATE.speed * 10);
+                this.vy = speedY + (Math.random() - 0.5) * 2;
+                this.life = 1.0;
+                this.decay = Math.random() * 0.05 + 0.02;
+                this.color = color;
+                this.size = Math.random() * 3 + 1;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life -= this.decay;
+            }
+            draw(ctx) {
+                ctx.globalAlpha = Math.max(0, this.life);
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, this.size, this.size);
+                ctx.globalAlpha = 1.0;
+            }
+        }
 
-        div.addEventListener('click', () => {
-          const snap = snapPoint(0, 0);
-          const placed = addPart(inv.type, snap.x, snap.y);
-          selectPart(placed);
-          render();
-          showToast(inv.label.split('\n')[0] + ' 배치됨', 'success');
+        let stars = [];
+        const NUM_STARS = 200;
+
+        /**
+         * Initialization & Events
+         */
+        function resizeCanvas() {
+            cw = canvas.width = window.innerWidth;
+            ch = canvas.height = window.innerHeight;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        
+        // Input Handling
+        window.addEventListener('mousedown', () => STATE.isThrusting = true);
+        window.addEventListener('mouseup', () => STATE.isThrusting = false);
+        window.addEventListener('touchstart', () => STATE.isThrusting = true);
+        window.addEventListener('touchend', () => STATE.isThrusting = false);
+        window.addEventListener('keydown', (e) => { if(e.code === 'Space') STATE.isThrusting = true; });
+        window.addEventListener('keyup', (e) => { if(e.code === 'Space') STATE.isThrusting = false; });
+        
+        window.addEventListener('mousemove', (e) => {
+            // Map mouse Y to -1 to 1 range
+            STATE.playerY = ((e.clientY / ch) * 2) - 1;
+        });
+        window.addEventListener('touchmove', (e) => {
+            STATE.playerY = ((e.touches[0].clientY / ch) * 2) - 1;
         });
 
-        grid.appendChild(div);
-      });
-    }
+        /**
+         * Core Logic Updates
+         */
+        function updatePhysics() {
+            if (!STATE.isRunning) return;
 
-    function loadStage(idx) {
-      currentStage = idx;
-      document.querySelectorAll('#circuit-panel .stage-item').forEach((el, i) => el.classList.toggle('active', i === idx));
-      const s = STAGES[idx];
-      if (!s) return;
-      clearCanvas();
-      if (s.parts?.length) s.parts.forEach(pd => addPart(pd.type, pd.x, pd.y));
-      updateMissionPanel();
-      switchTab('mission');
-      showToast('스테이지: ' + s.title);
-      render();
-    }
+            STATE.timeAlive += 0.016; // approx dt
 
-    function updateMissionPanel() {
-      const s = STAGES[currentStage];
-      if (!s) return;
-      document.getElementById('mission-title').textContent = s.title;
-      document.getElementById('mission-desc').textContent = s.desc;
-      document.getElementById('mission-hint').textContent = s.hint;
+            let engine = ENGINES[currentEngine];
+            STATE.maxSpeedLimit = engine.maxSpeed;
 
-      const goalsEl = document.getElementById('mission-goals');
-      goalsEl.innerHTML = '';
-      const state = { parts, simRunning, simData, wires };
-      s.goals.forEach(g => {
-        const li = document.createElement('li');
-        li.className = 'mission-goal';
-        const done = g.check(state);
-        const check = document.createElement('div');
-        check.className = 'goal-check' + (done ? ' done' : '');
-        const txt = document.createElement('span');
-        txt.textContent = g.text;
-        if (done) txt.style.color = 'var(--green)';
-        li.appendChild(check);
-        li.appendChild(txt);
-        goalsEl.appendChild(li);
-      });
-    }
+            // Thrust & Energy Management
+            if (STATE.isThrusting && STATE.energy > 0) {
+                // Relativity concept: As speed approaches c, acceleration requires exponentially more energy/effort
+                // Simplified: thrust decreases as speed nears 1.0 (unless using warp)
+                let relativityFactor = currentEngine === 4 ? 1 : Math.max(0.1, 1 - Math.pow(STATE.speed, 2));
+                
+                STATE.speed += engine.thrust * relativityFactor;
+                STATE.energy -= 0.5; // Drain
+                
+                // Spawn exhaust
+                let pY = (ch / 2) + (STATE.playerY * ch / 2);
+                for(let i=0; i<3; i++) {
+                    particles.push(new Particle(cw * 0.2, pY, STATE.playerY * 2, engine.color));
+                }
+            } else {
+                // Drag / Slowdown in space (abstraction for game mechanics)
+                STATE.speed *= 0.995;
+                if(STATE.speed < 0) STATE.speed = 0;
+                
+                // Regenerate energy
+                if (STATE.energy < STATE.maxEnergy) {
+                    STATE.energy += 0.2;
+                }
+            }
 
-    function checkMission() { updateMissionPanel(); }
+            // Cap speed
+            if (STATE.speed > STATE.maxSpeedLimit) {
+                STATE.speed = STATE.maxSpeedLimit;
+            }
 
-    function saveCircuit() {
-      const data = JSON.stringify({ parts, wires, nextId }, null, 2);
-      const blob = new Blob([data], { type: 'application/json' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'circuit.json';
-      a.click();
-      showToast('회로가 저장되었습니다', 'success');
-    }
+            // Update distance
+            STATE.distance += STATE.speed * 0.1;
 
-    function loadCircuit() {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = '.json';
-      input.onchange = e => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = ev => {
-          try {
-            const d = JSON.parse(ev.target.result);
-            parts = d.parts || [];
-            wires = d.wires || [];
-            nextId = d.nextId || nextId;
-            render();
-            showToast('회로를 불러왔습니다', 'success');
-          } catch {
-            showToast('파일을 읽을 수 없습니다', 'error');
-          }
+            // Update Entities
+            stars.forEach(s => s.update(STATE.speed));
+            
+            celestialObjects.forEach((obj, index) => {
+                obj.update(STATE.speed);
+                if(obj.x < -200) celestialObjects.splice(index, 1);
+            });
+
+            // Spawning Logic based on stage
+            if (Math.random() < 0.005 + (STATE.speed * 0.01)) {
+                spawnObstacle();
+            }
+
+            for(let i = particles.length - 1; i >= 0; i--) {
+                particles[i].update();
+                if(particles[i].life <= 0) particles.splice(i, 1);
+            }
+
+            checkStageProgression();
+        }
+
+        function spawnObstacle() {
+            if(celestialObjects.length > 2) return; // limit objects
+
+            if (STATE.stageIndex === 1 && Math.random() < 0.5) {
+                celestialObjects.push(new CelestialObject('planet'));
+            } else if (STATE.stageIndex >= 2) {
+                let type = Math.random() < 0.3 ? 'blackhole' : 'planet';
+                celestialObjects.push(new CelestialObject(type));
+            }
+        }
+
+        function checkStageProgression() {
+            let nextStage = STAGES[STATE.stageIndex + 1];
+            if (nextStage && STATE.distance >= nextStage.dist) {
+                STATE.stageIndex++;
+                logEvent(`=== 진입: ${nextStage.name} ===`, 'text-cyan-400 font-bold mt-2');
+                logEvent(nextStage.desc, 'text-gray-300');
+                
+                document.getElementById('ui-stage').innerText = STAGES[STATE.stageIndex].name.split(':')[1].trim();
+
+                // Stage specific visual changes could be triggered here
+                if(STATE.stageIndex === 3) {
+                     logEvent(`[경고] 중력 이상 현상 다수 감지. 블랙홀 출현 확률 증가.`, 'text-red-400');
+                }
+
+                if (STATE.stageIndex === STAGES.length - 1) {
+                    triggerEnding();
+                }
+            }
+        }
+
+        /**
+         * UI & Rendering Updates
+         */
+        function updateUI() {
+            // Format numbers
+            let speedDisplay = STATE.speed.toFixed(3);
+            if(STATE.speed >= 1.0) speedDisplay = "WARP " + STATE.speed.toFixed(2);
+            document.getElementById('ui-speed').innerText = speedDisplay + " c";
+            
+            document.getElementById('ui-dist').innerText = STATE.distance.toFixed(1) + " Ly";
+            
+            let energyPct = Math.floor((STATE.energy / STATE.maxEnergy) * 100);
+            document.getElementById('ui-energy-bar').style.width = energyPct + '%';
+            document.getElementById('ui-energy-text').innerText = energyPct + '%';
+            
+            // Color code energy bar
+            let bar = document.getElementById('ui-energy-bar');
+            if(energyPct < 20) bar.className = "bg-red-500 h-full w-full transition-all duration-100";
+            else if(energyPct < 50) bar.className = "bg-yellow-500 h-full w-full transition-all duration-100";
+            else bar.className = "bg-cyan-500 h-full w-full transition-all duration-100";
+
+            document.getElementById('ui-currency').innerText = Math.floor(STATE.darkMatter);
+
+            updateUpgradeButtons();
+        }
+
+        const logContainer = document.getElementById('log-container');
+        function logEvent(text, colorClass = 'text-green-300') {
+            const div = document.createElement('div');
+            div.className = colorClass;
+            div.innerText = `[${STATE.distance.toFixed(0)}Ly]: ${text}`;
+            logContainer.appendChild(div);
+            // Keep only last 50 logs
+            if (logContainer.children.length > 50) {
+                logContainer.removeChild(logContainer.firstChild);
+            }
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function buildUpgrades() {
+            const container = document.getElementById('upgrade-list');
+            container.innerHTML = '';
+            ENGINES.forEach((eng, idx) => {
+                if(idx === 0) return; // skip base engine
+                
+                const btn = document.createElement('button');
+                btn.id = `btn-upg-${idx}`;
+                btn.className = `w-full text-left p-2 rounded mb-2 border flex flex-col transition duration-200 
+                                ${currentEngine >= idx ? 'bg-blue-900 border-blue-500 opacity-50 cursor-not-allowed' : 'bg-gray-800 border-gray-600 hover:bg-gray-700'}`;
+                
+                let statusText = currentEngine >= idx ? '[장착됨]' : `비용: ${eng.cost} DM`;
+                
+                btn.innerHTML = `
+                    <div class="flex justify-between font-orbitron text-sm">
+                        <span style="color:${eng.color}">${eng.name}</span>
+                        <span class="text-xs text-gray-400">${statusText}</span>
+                    </div>
+                    <div class="text-[10px] text-gray-400 mt-1">${eng.desc} (Max Speed: ${eng.maxSpeed}c)</div>
+                `;
+
+                btn.onclick = () => {
+                    if (currentEngine < idx && STATE.darkMatter >= eng.cost) {
+                        STATE.darkMatter -= eng.cost;
+                        currentEngine = idx;
+                        logEvent(`[업그레이드 완료]: ${eng.name} 장착. 최고 속도 한계가 증가합니다.`, 'text-yellow-300');
+                        buildUpgrades(); // Re-render to update states
+                    }
+                };
+                container.appendChild(btn);
+            });
+        }
+
+        function updateUpgradeButtons() {
+            ENGINES.forEach((eng, idx) => {
+                if(idx === 0) return;
+                const btn = document.getElementById(`btn-upg-${idx}`);
+                if (btn && currentEngine < idx) {
+                    if (STATE.darkMatter >= eng.cost) {
+                        btn.classList.replace('border-gray-600', 'border-yellow-400');
+                        btn.classList.add('animate-pulse');
+                    } else {
+                        btn.classList.replace('border-yellow-400', 'border-gray-600');
+                        btn.classList.remove('animate-pulse');
+                    }
+                }
+            });
+        }
+
+        function drawGame() {
+            const shipX = cw * 0.2; // 우주선 x 위치
+
+            // Star의 draw 메서드에 shipX와 STATE.speed를 전달
+            stars.forEach(s => s.draw(ctx, shipX, STATE.speed));
+            // Clear with slight trailing effect for motion blur
+            ctx.fillStyle = `rgba(0, 0, 0, ${STATE.speed > 0.5 ? 0.2 : 0.8})`;
+            ctx.fillRect(0, 0, cw, ch);
+
+            // Draw Stars
+            stars.forEach(s => s.draw(ctx, shipX, STATE.speed));
+
+            // Draw Celestial Objects
+            celestialObjects.forEach(obj => obj.draw(ctx));
+
+            // Draw Particles
+            particles.forEach(p => p.draw(ctx));
+
+            // Draw Player Ship (Abstract geometric shape)
+            let pX = cw * 0.2;
+            let pY = (ch / 2) + (STATE.playerY * ch / 2);
+            
+            ctx.save();
+            ctx.translate(pX, pY);
+            
+            // Add jitter if speeding fast
+            if(STATE.speed > 0.8) {
+                ctx.translate((Math.random()-0.5)*2, (Math.random()-0.5)*2);
+            }
+
+            // Ship Body
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.moveTo(20, 0); // nose
+            ctx.lineTo(-10, -10); // top wing
+            ctx.lineTo(-5, 0); // back
+            ctx.lineTo(-10, 10); // bottom wing
+            ctx.closePath();
+            ctx.fill();
+            
+            // Engine Glow
+            if(STATE.isThrusting) {
+                let engine = ENGINES[currentEngine];
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = engine.color;
+                ctx.fillStyle = engine.color;
+                ctx.beginPath();
+                ctx.arc(-8, 0, 4 + Math.random()*2, 0, Math.PI*2);
+                ctx.fill();
+            }
+
+            ctx.restore();
+        }
+
+        function triggerEnding() {
+            STATE.isRunning = false;
+            document.getElementById('ui-layer').style.display = 'none';
+            const endScreen = document.getElementById('end-screen');
+            endScreen.classList.remove('hidden');
+            
+            // Final visual effect on canvas before stopping completely
+            let alpha = 0;
+            const fadeInterval = setInterval(() => {
+                alpha += 0.05;
+                ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+                ctx.fillRect(0, 0, cw, ch);
+                if(alpha >= 1) clearInterval(fadeInterval);
+            }, 50);
+        }
+
+        /**
+         * Chart.js Telemetry Integration
+         */
+        let telemetryChart;
+        let chartData = {
+            labels: [], // Time ticks
+            datasets: [{
+                label: 'Velocity (c)',
+                data: [],
+                borderColor: 'rgba(100, 150, 255, 1)',
+                backgroundColor: 'rgba(100, 150, 255, 0.1)',
+                borderWidth: 2,
+                pointRadius: 0,
+                fill: true,
+                tension: 0.4
+            }]
         };
-        reader.readAsText(file);
-      };
-      input.click();
-    }
 
-    function onInventoryDragStart(e) {
-      const item = e.target.closest('.part-item');
-      if (!item) return;
-      dragPartType = item.dataset.type;
-      e.dataTransfer.effectAllowed = 'copy';
-    }
-
-    function onCanvasDrop(e) {
-      if (!dragPartType) return;
-      const rect = overlay.getBoundingClientRect();
-      const wx = (e.clientX - rect.left - offsetX) / scale;
-      const wy = (e.clientY - rect.top - offsetY) / scale;
-      const snap = snapPoint(wx, wy);
-      addPart(dragPartType, snap.x, snap.y);
-      dragPartType = null;
-      render();
-    }
-
-    function setupCanvasEvents() {
-      overlay.addEventListener('mousedown', onMouseDown);
-      overlay.addEventListener('mousemove', onMouseMove);
-      overlay.addEventListener('mouseup', onMouseUp);
-      overlay.addEventListener('wheel', onWheel, { passive:false });
-      overlay.addEventListener('contextmenu', onContextMenu);
-      overlay.addEventListener('dblclick', onDblClick);
-      overlay.addEventListener('click', onClick);
-      overlay.style.cursor = 'default';
-      overlay.style.pointerEvents = 'auto';
-
-      document.getElementById('part-inventory').addEventListener('dragstart', onInventoryDragStart);
-      overlay.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
-      overlay.addEventListener('drop', onCanvasDrop);
-    }
-
-    function onMouseDown(e) {
-      if (e.button === 1 || (e.button === 0 && e.altKey)) {
-        isPanning = true;
-        panStartX = e.clientX; panStartY = e.clientY;
-        panOffX = offsetX; panOffY = offsetY;
-        overlay.style.cursor = 'grabbing';
-        return;
-      }
-      if (e.button === 2) return;
-      const rect = overlay.getBoundingClientRect();
-      const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-      const w = toWorld(mx, my);
-
-      if (tool === 'wire') {
-        if (!wiringState) {
-          const term = findTerminalAt(w.x, w.y);
-          const snap = term ? {x: term.wx, y: term.wy} : snapPoint(w.x, w.y);
-          wiringState = snap;
-          wiringNodes = [snap];
-        } else {
-          const term = findTerminalAt(w.x, w.y);
-          const snap = term ? {x: term.wx, y: term.wy} : snapPoint(w.x, w.y);
-          wiringNodes.push(snap);
-          if (term && wiringNodes.length >= 2) finalizeWire(term);
+        function initChart() {
+            const chartCanvas = document.getElementById('telemetryChart').getContext('2d');
+            Chart.defaults.color = 'rgba(255, 255, 255, 0.5)';
+            Chart.defaults.font.family = "'Orbitron', sans-serif";
+            
+            telemetryChart = new Chart(chartCanvas, {
+                type: 'line',
+                data: chartData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false, // Turn off for real-time performance
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: false }
+                    },
+                    scales: {
+                        x: { display: false }, // Hide time axis
+                        y: { 
+                            display: true, 
+                            min: 0,
+                            max: 1.2, // Show up to light speed + warp buffer
+                            grid: { color: 'rgba(255,255,255,0.1)' }
+                        }
+                    }
+                }
+            });
         }
-        render();
-        return;
-      }
 
-      if (tool === 'delete') {
-        const p = findPartAt(w.x, w.y);
-        if (p) { removePart(p.id); render(); return; }
-        const wIdx = findWireAt(w.x, w.y);
-        if (wIdx !== null) { removeWire(wIdx); render(); return; }
-        return;
-      }
+        let lastChartUpdate = 0;
+        function updateChart() {
+            if(Date.now() - lastChartUpdate > 500) { // Update 2 times a sec
+                const timeTick = Math.floor(STATE.timeAlive);
+                
+                chartData.labels.push(timeTick);
+                chartData.datasets[0].data.push(STATE.speed);
 
-      if (tool === 'meter') {
-        const p = findPartAt(w.x, w.y);
-        if (p && simRunning && simData[p.id]) {
-          const d = simData[p.id];
-          document.getElementById('m-voltage').textContent = d.v.toFixed(2);
-          document.getElementById('m-current').textContent = d.i.toFixed(3);
-          document.getElementById('m-resistance').textContent = typeof d.r === 'number' ? d.r.toFixed(1) : '∞';
-          document.getElementById('m-power').textContent = d.p.toFixed(3);
-          switchTab('meter');
-          showToast(`${PART_DEFS[p.type]?.label}: ${d.v.toFixed(2)}V / ${d.i.toFixed(3)}A`, 'success');
+                // Keep last 30 data points
+                if (chartData.labels.length > 30) {
+                    chartData.labels.shift();
+                    chartData.datasets[0].data.shift();
+                }
+                
+                // Adjust Y axis max if warp speed
+                if(STATE.speed > 1.0) {
+                    telemetryChart.options.scales.y.max = STATE.speed + 0.5;
+                }
+
+                telemetryChart.update();
+                lastChartUpdate = Date.now();
+            }
         }
-        return;
-      }
 
-      const p = findPartAt(w.x, w.y);
-      if (p) {
-        selectPart(p);
-        draggingPart = p;
-        dragOffX = w.x - p.x;
-        dragOffY = w.y - p.y;
-        return;
-      }
-      const wIdx = findWireAt(w.x, w.y);
-      if (wIdx !== null) {
-        selectWire(wires[wIdx]);
-        return;
-      }
-      selectPart(null);
-      selectWire(null);
-      render();
-    }
 
-    function onClick(e) {
-      if (tool !== 'select') return;
-      const rect = overlay.getBoundingClientRect();
-      const w = toWorld(e.clientX - rect.left, e.clientY - rect.top);
-      const p = findPartAt(w.x, w.y);
-      if (p && p.type === 'switch') {
-        const now = Date.now();
-        if (lastClickPart === p && now - lastClickTime < 400) {
-          p.on = !p.on;
-          if (simRunning) runSimulation();
-          showToast('스위치 ' + (p.on ? '닫힘' : '열림'));
-          render();
+        /**
+         * Main Loop
+         */
+        function gameLoop() {
+            updatePhysics();
+            drawGame();
+            updateUI();
+            if(STATE.isRunning) updateChart();
+
+            if(STATE.isRunning) {
+                requestAnimationFrame(gameLoop);
+            }
         }
-        lastClickTime = now;
-        lastClickPart = p;
-      }
-    }
 
-    function onMouseMove(e) {
-      const rect = overlay.getBoundingClientRect();
-      const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-      const w = toWorld(mx, my);
-      lastMouseWorld = w;
+        // Boot Sequence
+        function init() {
+            resizeCanvas();
+            for(let i=0; i<NUM_STARS; i++) stars.push(new Star());
+            buildUpgrades();
+            initChart();
+            
+            logEvent("관측 가능한 우주 경계 탈출 프로토콜 시작.");
+            logEvent("스페이스바(또는 터치)를 길게 눌러 가속하십시오.", "text-yellow-400 font-bold");
+            
+            document.getElementById('ui-stage').innerText = STAGES[0].name.split(':')[1].trim();
 
-      if (isPanning) {
-        offsetX = panOffX + (e.clientX - panStartX);
-        offsetY = panOffY + (e.clientY - panStartY);
-        render();
-        return;
-      }
-
-      if (draggingPart) {
-        const snap = snapPoint(w.x - dragOffX, w.y - dragOffY);
-        draggingPart.x = snap.x;
-        draggingPart.y = snap.y;
-        updateWiresForPart(draggingPart);
-        render();
-        return;
-      }
-
-      hoverTerminal = findTerminalAt(w.x, w.y);
-      hoverWire = findWireAt(w.x, w.y);
-
-      if (tool === 'wire') overlay.style.cursor = 'crosshair';
-      else if (tool === 'delete') overlay.style.cursor = (findPartAt(w.x, w.y) || hoverWire !== null) ? 'not-allowed' : 'default';
-      else if (tool === 'meter') overlay.style.cursor = findPartAt(w.x, w.y) ? 'cell' : 'default';
-      else overlay.style.cursor = findPartAt(w.x, w.y) ? 'grab' : 'default';
-
-      render();
-    }
-
-    function onMouseUp() {
-      if (isPanning) {
-        isPanning = false;
-        overlay.style.cursor = 'default';
-        return;
-      }
-      if (draggingPart) {
-        draggingPart = null;
-        if (simRunning) runSimulation();
-        render();
-      }
-    }
-
-    function onWheel(e) {
-      e.preventDefault();
-      const rect = overlay.getBoundingClientRect();
-      const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
-      zoom(e.deltaY < 0 ? 1.1 : 0.909, cx, cy);
-      render();
-    }
-
-    function onContextMenu(e) {
-      e.preventDefault();
-      const rect = overlay.getBoundingClientRect();
-      const w = toWorld(e.clientX - rect.left, e.clientY - rect.top);
-      const p = findPartAt(w.x, w.y);
-      if (p) {
-        selectPart(p);
-        showContextMenu(e.clientX, e.clientY);
-      }
-    }
-
-    function onDblClick(e) {
-      if (tool === 'wire' && wiringState) {
-        if (wiringNodes.length >= 2) finalizeWire(null);
-        wiringState = null;
-        wiringNodes = [];
-        render();
-      }
-    }
-
-    function setupKeyboard() {
-      document.addEventListener('keydown', e => {
-        if (document.getElementById('circuit-panel').classList.contains('active')) {
-          if (e.target.tagName === 'INPUT') return;
-          switch (e.key) {
-            case 'w': case 'W': setTool('wire'); break;
-            case 's': case 'S': setTool('select'); break;
-            case 'm': case 'M': setTool('meter'); break;
-            case 'r': case 'R': rotateSelected(); break;
-            case 'Delete': case 'Backspace': deleteSelected(); break;
-            case ' ': e.preventDefault(); toggleSimulation(); break;
-            case 'Escape':
-              if (wiringState) { wiringState = null; wiringNodes = []; render(); }
-              setTool('select');
-              break;
-          }
+            gameLoop();
         }
-      });
-    }
 
-    function drawBattery(c, p, sd) {
-      c.strokeStyle = '#94a3b8'; c.lineWidth = 2; c.lineCap='round';
-      c.beginPath(); c.moveTo(-S, 0); c.lineTo(-S*0.35, 0); c.stroke();
-      c.beginPath(); c.moveTo(S*0.35, 0); c.lineTo(S, 0); c.stroke();
-      const col1 = sd ? '#ffb800' : '#6b7280';
-      const col2 = sd ? '#f97316' : '#4b5563';
-      c.strokeStyle = col1; c.lineWidth = 3;
-      c.beginPath(); c.moveTo(-S*0.35, -S*0.4); c.lineTo(-S*0.35, S*0.4); c.stroke();
-      c.strokeStyle = col2; c.lineWidth = 6;
-      c.beginPath(); c.moveTo(S*0.35, -S*0.55); c.lineTo(S*0.35, S*0.55); c.stroke();
-      c.fillStyle = sd ? '#ffb800' : '#6b7280'; c.font = `bold 10px JetBrains Mono`; c.textAlign='center';
-      c.fillText('+', S*0.7, -S*0.4);
-      c.fillText('−', -S*0.7, -S*0.4);
-      c.fillStyle = '#94a3b8'; c.font = `9px Space Grotesk`; c.textAlign='center';
-      c.fillText(p.value+'V', 0, S*0.55);
-    }
+        // Start
+        window.onload = init;
 
-    function drawResistor(c, p, sd) {
-      c.strokeStyle = '#94a3b8'; c.lineWidth = 2; c.lineCap='round';
-      c.beginPath(); c.moveTo(-S, 0); c.lineTo(-S*0.4, 0); c.stroke();
-      c.beginPath(); c.moveTo(S*0.4, 0); c.lineTo(S, 0); c.stroke();
-      const col = sd ? '#f97316' : '#6b7280';
-      c.strokeStyle = col; c.lineWidth = 2;
-      c.beginPath();
-      c.moveTo(-S*0.4, 0);
-      const steps = 7, sw = S*0.8/steps;
-      for (let i=0;i<steps;i++) c.lineTo(-S*0.4 + (i+0.5)*sw, (i%2===0?-1:1)*S*0.25);
-      c.lineTo(S*0.4, 0);
-      c.stroke();
-      c.fillStyle = '#94a3b8'; c.font = `9px Space Grotesk`; c.textAlign='center';
-      c.fillText(p.value+'Ω', 0, S*0.55);
-    }
-
-    function drawLED(c, p, sd) {
-      c.strokeStyle = '#94a3b8'; c.lineWidth = 2; c.lineCap='round';
-      c.beginPath(); c.moveTo(-S, 0); c.lineTo(-S*0.35, 0); c.stroke();
-      c.beginPath(); c.moveTo(S*0.35, 0); c.lineTo(S, 0); c.stroke();
-      const brightness = sd ? Math.min(sd.i / 0.02, 1) : 0;
-      const col = `rgba(0,255,136,${0.3 + brightness * 0.7})`;
-      c.fillStyle = col; c.strokeStyle = col; c.lineWidth = 1.5;
-      c.beginPath(); c.moveTo(-S*0.35, -S*0.32); c.lineTo(-S*0.35, S*0.32); c.lineTo(S*0.35, 0); c.closePath(); c.fill(); c.stroke();
-      c.strokeStyle = col; c.lineWidth = 2;
-      c.beginPath(); c.moveTo(S*0.35, -S*0.32); c.lineTo(S*0.35, S*0.32); c.stroke();
-      c.fillStyle = '#94a3b8'; c.font = `9px Space Grotesk`; c.textAlign='center';
-      c.fillText(p.value+'Vf', 0, S*0.55);
-    }
-
-    function drawSwitch(c, p) {
-      c.strokeStyle = '#94a3b8'; c.lineWidth = 2; c.lineCap='round';
-      c.beginPath(); c.moveTo(-S, 0); c.lineTo(-S*0.35, 0); c.stroke();
-      c.beginPath(); c.moveTo(S*0.35, 0); c.lineTo(S, 0); c.stroke();
-      const col = p.on ? '#60a5fa' : '#4b5563';
-      c.fillStyle = col; c.beginPath(); c.arc(-S*0.35, 0, 4, 0, Math.PI*2); c.fill();
-      c.fillStyle = col; c.beginPath(); c.arc(S*0.35, 0, 4, 0, Math.PI*2); c.fill();
-      c.strokeStyle = col; c.lineWidth = 2.5;
-      c.beginPath(); c.moveTo(-S*0.35, 0); c.lineTo(S*0.35, p.on ? 0 : -S*0.3); c.stroke();
-      c.fillStyle = '#94a3b8'; c.font = `9px Space Grotesk`; c.textAlign='center';
-      c.fillText(p.on ? '닫힘' : '열림', 0, S*0.55);
-    }
-
-    function drawBulb(c, p, sd) {
-      c.strokeStyle = '#94a3b8'; c.lineWidth = 2; c.lineCap='round';
-      c.beginPath(); c.moveTo(-S, 0); c.lineTo(-S*0.3, 0); c.stroke();
-      c.beginPath(); c.moveTo(S*0.3, 0); c.lineTo(S, 0); c.stroke();
-      const brightness = sd ? Math.min(sd.i * sd.v / 3, 1) : 0;
-      if (brightness > 0.05) {
-        const grad = c.createRadialGradient(0,0,0,0,0,S*0.6);
-        grad.addColorStop(0, `rgba(255,255,200,${brightness*0.6})`);
-        grad.addColorStop(1, 'transparent');
-        c.fillStyle = grad;
-        c.beginPath(); c.arc(0,0,S*0.8,0,Math.PI*2); c.fill();
-      }
-      c.strokeStyle = brightness > 0 ? `rgba(253,230,138,${0.5+brightness*0.5})` : '#4a5568';
-      c.lineWidth = 2;
-      c.beginPath(); c.arc(0, -S*0.05, S*0.28, 0, Math.PI*2); c.stroke();
-      c.fillStyle = brightness > 0 ? `rgba(253,230,138,${0.2+brightness*0.8})` : 'rgba(74,85,104,0.3)';
-      c.beginPath(); c.arc(0, -S*0.05, S*0.28, 0, Math.PI*2); c.fill();
-    }
-
-    function drawCapacitor(c, p) {
-      c.strokeStyle = '#94a3b8'; c.lineWidth = 2; c.lineCap='round';
-      c.beginPath(); c.moveTo(-S, 0); c.lineTo(-S*0.12, 0); c.stroke();
-      c.beginPath(); c.moveTo(S*0.12, 0); c.lineTo(S, 0); c.stroke();
-      c.strokeStyle = '#a78bfa'; c.lineWidth = 4;
-      c.beginPath(); c.moveTo(-S*0.12, -S*0.4); c.lineTo(-S*0.12, S*0.4); c.stroke();
-      c.beginPath(); c.moveTo(S*0.12, -S*0.4); c.lineTo(S*0.12, S*0.4); c.stroke();
-      c.fillStyle = '#94a3b8'; c.font = `9px Space Grotesk`; c.textAlign='center';
-      c.fillText(p.value+'μF', 0, S*0.65);
-    }
-
-    function drawWireNode(c) {
-      c.fillStyle = '#94a3b8';
-      c.beginPath(); c.arc(0, 0, 6, 0, Math.PI*2); c.fill();
-    }
-
-    function drawPartOnCtx(c, p) {
-      const sd = simRunning && simData[p.id] ? simData[p.id] : null;
-      switch (p.type) {
-        case 'battery': drawBattery(c, p, sd); break;
-        case 'resistor': drawResistor(c, p, sd); break;
-        case 'led': drawLED(c, p, sd); break;
-        case 'switch': drawSwitch(c, p, sd); break;
-        case 'bulb': drawBulb(c, p, sd); break;
-        case 'capacitor': drawCapacitor(c, p, sd); break;
-        case 'wire_node': drawWireNode(c, p, sd); break;
-      }
-    }
-
-    function drawGrid() {
-      const step = GRID;
-      const vx0 = -offsetX / scale, vy0 = -offsetY / scale;
-      const vx1 = (W - offsetX) / scale, vy1 = (H - offsetY) / scale;
-      ctx.strokeStyle = 'rgba(30,45,74,0.7)';
-      ctx.lineWidth = 0.5 / scale;
-      const sx = Math.floor(vx0 / step) * step;
-      const sy = Math.floor(vy0 / step) * step;
-      for (let x = sx; x < vx1 + step; x += step) {
-        ctx.beginPath(); ctx.moveTo(x, vy0 - step); ctx.lineTo(x, vy1 + step); ctx.stroke();
-      }
-      for (let y = sy; y < vy1 + step; y += step) {
-        ctx.beginPath(); ctx.moveTo(vx0 - step, y); ctx.lineTo(vx1 + step, y); ctx.stroke();
-      }
-    }
-
-    function onContextMenu(e) {
-      e.preventDefault();
-      const rect = overlay.getBoundingClientRect();
-      const w = toWorld(e.clientX - rect.left, e.clientY - rect.top);
-      const p = findPartAt(w.x, w.y);
-      if (p) {
-        selectPart(p);
-        showContextMenu(e.clientX, e.clientY);
-      }
-    }
-
-    function onDblClick(e) {
-      if (tool === 'wire' && wiringState) {
-        if (wiringNodes.length >= 2) finalizeWire(null);
-        wiringState = null;
-        wiringNodes = [];
-        render();
-      }
-    }
-
-    function clearMap() {
-      if (window.confirm('핵 시뮬레이터를 리셋할까요?')) {
-        const panel = document.getElementById('nuclear-panel');
-        const canvas = document.getElementById('nuclear-canvas');
-        const rect = canvas.getBoundingClientRect();
-        init();
-      }
-    }
-
-    function loadStage(idx) {
-      currentStage = idx;
-      document.querySelectorAll('#circuit-panel .stage-item').forEach((el, i) => el.classList.toggle('active', i === idx));
-      const s = STAGES[idx];
-      if (!s) return;
-      clearCanvas();
-      if (s.parts?.length) s.parts.forEach(pd => addPart(pd.type, pd.x, pd.y));
-      updateMissionPanel();
-      switchTab('mission');
-      showToast('스테이지: ' + s.title);
-      render();
-    }
-
-    function onShow() { resize(); render(); }
-
-    init();
-
-    return {
-      setTool, clearCanvas, rotateSelected, toggleSimulation,
-      saveCircuit, loadCircuit, loadStage, switchTab,
-      updatePartValue, deleteSelected, ctxAction,
-      zoom, resetView, clearMap, currentStage,
-      onShow
-    };
-  })();
-  </script>
+    </script>
 </body>
 </html>
