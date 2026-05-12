@@ -159,7 +159,7 @@
             <div class="panel flex-1 rounded-lg p-4 flex flex-col">
                 <div class="text-blue-300 font-orbitron text-xs uppercase border-b border-blue-900 pb-2 mb-2">System Terminal</div>
                 <div id="log-container" class="flex-grow overflow-y-auto text-xs font-mono space-y-1">
-                    <div class="text-green-400">[System]: 엔진 초기화 완료. 우주 개척을 시작합니다.  <br> [V.1.1] change log: 엔진 종류 2종 추가, 적색편이 구현.</div>
+                    <div class="text-green-400">[System]: 엔진 초기화 완료. 우주 개척을 시작합니다.  <br> [V.2.0] change log: 엔진 다량 추가, 자동저장기능.</div>
                 </div>
             </div>
 
@@ -214,17 +214,53 @@
             playerY: 0,        // -1 to 1 based on mouse
             timeAlive: 0
         };
+// 엔진
+const ENGINES = [
+    { id: 0, name: "화학 로켓", desc: "지구 탈출용 기초 엔진", maxSpeed: 0.005, thrust: 0.0001, cost: 0, color: '#ffaa00' },
+    { id: 1, name: "이온 엔진", desc: "지속 가속, 태양계 항해", maxSpeed: 0.05, thrust: 0.0005, cost: 50, color: '#00ffff' },
+    { id: 2, name: "핵융합 엔진", desc: "성간 여행용 고출력", maxSpeed: 0.3, thrust: 0.002, cost: 300, color: '#ff00ff' },
+    { id: 3, name: "반물질 엔진", desc: "아광속 진입 가능", maxSpeed: 0.95, thrust: 0.01, cost: 1500, color: '#aa00ff' },
+    { id: 4, name: "워프 드라이브", desc: "공간 왜곡, 광속 돌파", maxSpeed: 5.0, thrust: 0.05, cost: 10000, color: '#ffffff' },
+    { id: 5, name: "하이퍼드라이브", desc: "4차원 초공간 진입 및 거리 단축.", maxSpeed: 25, thrust: 0.3, cost: 50000, color: '#0055ff' },
+    { id: 6, name: "타키온 엔진", desc: "가상의 초광속 입자 제어.", maxSpeed: 150, thrust: 2, cost: 150000, color: '#04d9ff' },
+    { id: 7, name: "중력자 엔진", desc: "인공 중력장 생성 및 시공간 견인.", maxSpeed: 800, thrust: 15, cost: 500000, color: '#ff3300' },
+    { id: 8, name: "글루온 엔진", desc: "원자핵 결합 에너지를 추진력으로 해방.", maxSpeed: 5000, thrust: 80, cost: 1200000, color: '#ffcc00' },
+    { id: 9, name: "양자 얽힘 드라이브", desc: "두 지점의 양자 상태를 동기화.", maxSpeed: 30000, thrust: 500, cost: 4000000, color: '#00ffaa' },
+    { id: 10, name: "확률 변동 엔진", desc: "도착할 확률 자체를 조작.", maxSpeed: 200000, thrust: 3000, cost: 12000000, color: '#ff0066' },
+    { id: 11, name: "나노 스웜 엔진", desc: "수조 개의 입자가 만드는 유동적 추진.", maxSpeed: 1500000, thrust: 25000, cost: 45000000, color: '#999999' },
+    { id: 12, name: "암흑 에너지 엔진", desc: "우주 팽창의 원동력을 역이용.", maxSpeed: 10000000, thrust: 200000, cost: 150000000, color: '#3300ff' },
+    { id: 13, name: "마이크로블랙홀 엔진", desc: "호킹 복사 증발 에너지를 추진력으로 전환.", maxSpeed: 100000000, thrust: 1500000, cost: 500000000, color: '#6600ff' },
+    { id: 14, name: "고차원 도약기", desc: "물질의 위상을 변화시켜 시공간을 초월.", maxSpeed: 2000000000, thrust: 10000000, cost: 2000000000, color: '#ffffff' },
+    { id: 99, name: "개발자엔진", desc: "물리 법칙을 무시하는 디버그용 엔진.", maxSpeed: 9999999999, thrust: 999999999, cost: 1, color: '#ff7777' }
+];
 
-        const ENGINES = [
-            { id: 0, name: "화학 로켓", desc: "지구 탈출용 기초 엔진", maxSpeed: 0.005, thrust: 0.0001, cost: 0, color: '#ffaa00' },
-            { id: 1, name: "이온 엔진", desc: "지속 가속, 태양계 항해", maxSpeed: 0.05, thrust: 0.0005, cost: 50, color: '#00ffff' },
-            { id: 2, name: "핵융합 엔진", desc: "성간 여행용 고출력", maxSpeed: 0.3, thrust: 0.002, cost: 300, color: '#ff00ff' },
-            { id: 3, name: "반물질 엔진", desc: "아광속 진입 가능", maxSpeed: 0.95, thrust: 0.01, cost: 1500, color: '#aa00ff' },
-            { id: 4, name: "워프 드라이브", desc: "공간 왜곡, 광속 돌파", maxSpeed: 5.0, thrust: 0.05, cost: 10000, color: '#ffffff' },
-            { id: 5, name: "궁극의 이창형창형 엔진", desc: "관측 우주를 초월하는 궁극의 추진력", maxSpeed: 30, thrust: 1.3, cost: 45000, color: '#5fb7ca' },
-            { id: 6, name: "궁극의 여호선호선 엔진", desc: "우주 여행에 마침표를 찍다, Q.E.D.", maxSpeed: 300, thrust: 45, cost: 111111, color: '#fbceb1' }
-        ];
+        /* --- 저장 로직 시작 --- */
+const SAVE_KEY = "EscapeUniverse_v1";
 
+const GamePersistence = {
+    save() {
+        const payload = {
+            distance: STATE.distance,
+            darkMatter: STATE.darkMatter,
+            currentEngine: currentEngine,
+            stageIndex: STATE.stageIndex
+        };
+        localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
+    },
+    load() {
+        const data = localStorage.getItem(SAVE_KEY);
+        if (!data) return false;
+        const parsed = JSON.parse(data);
+        
+        STATE.distance = parsed.distance;
+        STATE.darkMatter = parsed.darkMatter;
+        currentEngine = parsed.currentEngine;
+        STATE.stageIndex = parsed.stageIndex;
+        return true;
+    }
+};
+/* --- 저장 로직 끝 --- */
+// 거리별 스테이지
         let currentEngine = 0;
 
         const STAGES = [
@@ -232,8 +268,17 @@
             { dist: 100, name: "Stage 2: 태양계 항해", desc: "행성들의 중력 도움(Sling-shot)을 이용해 가속." },
             { dist: 1000, name: "Stage 3: 성간 여행", desc: "태양계를 벗어나 빛의 속도(c)에 도전하는 단계." },
             { dist: 5000, name: "Stage 4: 은하 탈출", desc: "우리 은하를 벗어나 심우주로 진입." },
-            { dist: 20000, name: "Final: 지평선 너머", desc: "관측 가능한 우주의 끝을 향하여." },
-            { dist: 50000, name: "THE END", desc: "" } // Win condition
+            { dist: 20000, name: "Stage 5: 은하간 공간", desc: "빛조차 희박한 은하 사이의 거대한 빈 공간." },
+            { dist: 50000, name: "Stage 6: 국부은하군 진출", desc: "안드로메다를 향한 은하간 이동의 시작." },
+            { dist: 100000, name: "Stage 7: 라니아케아의 심장", desc: "무한한 하늘의 심장을 가로지르다." },
+            { dist: 200000, name: "Stage 8: 우주거대구조", desc: "우리 은하도 우주거대구조의 일부입니다." },
+            { dist: 1000000, name: "Stage 9: 페르세우스자리-물고기자리 초은하단", desc: "우리 은하가 속한 라니아케아를 벗어나 처음으로 마주하는 거대 은하들의 연합입니다. 수천 개의 은하가 거대한 사슬처럼 얽혀 수억 광년에 걸쳐 뻗어 있습니다. 이곳의 중력은 너무나 강력하여 시공간 자체가 미세하게 뒤틀려 있습니다. 당신은 이제 은하라는 단위를 넘어, 우주의 '골격'을 따라 달리기 시작했습니다." },
+            { dist: 10000000, name: "Stage 10: 헤르쿨레스자리-북쪽왕관자리 장성", desc: "인류가 관측한 우주에서 가장 거대한 단일 구조물입니다. 그 크기만 100억 광년, 우주 전체 크기의 10%에 달하는 믿을 수 없는 규모의 은하 벽입니다. 너무나 거대하여 현대 물리학의 '우주론 원리'조차 위협하는 이 장성은, 우주가 설계된 근원적인 청사진을 보여주는 듯합니다. 이 벽을 넘는다는 것은 곧 우주의 심장부를 관통함을 의미합니다." },
+            { dist: 100000000, name: "Stage 11: 초거대 공동", desc: "우주조차 숨을 죽인 곳. 존재의 부재가 당신을 압도하기 시작합니다. 어둠은 더 이상 빛의 반대가 아닌, 실재하는 거대한 장벽입니다." },
+            { dist: 1000000000, name: "Stage 12: 고에너지 감마선 폭발 지대", desc: "죽어가는 별들의 최후 비명이 찬란한 죽음의 빛으로 함선을 감쌉니다. 시공간의 파편을 뚫고 태초의 성소로 나아가십시오." },
+            { dist: 45000000000, name: "Stage 13: 우주 배경 복사의 벽", desc: "경고. 공간의 팽창 속도가 광속을 추월하기 시작합니다. 우리는 지금 우주를 밀어내는 근원적인 힘, '암흑 에너지'의 거센 파도 위에 올라탔습니다." },
+            { dist: 96000000000, name: "Stage 14: 암흑 에너지의 파도", desc: "경고. 공간의 팽창 속도가 광속을 추월하기 시작합니다. 우리는 지금 우주를 밀어내는 근원적인 힘, '암흑 에너지'의 거센 파도 위에 올라탔습니다." },
+            { dist: 18446744073709551615, name: "THE END", desc: "" } // Win condition
         ];
 
         // Constants
@@ -263,7 +308,7 @@
                 if (this.x < 0) {
                     this.reset(false);
                     // Passively gain dark matter from 'collecting' stardust over distance
-                    if(Math.random() < 0.05) STATE.darkMatter += 1;
+                    if(Math.random() < 0.15) STATE.darkMatter += 1;
                 }
             } 
         // draw 메서드를 꼭 클래스 안에 정의해야 함
@@ -614,6 +659,7 @@
             container.innerHTML = '';
             ENGINES.forEach((eng, idx) => {
                 if(idx === 0) return; // skip base engine
+                if(eng.id === 99) return;
                 
                 const btn = document.createElement('button');
                 btn.id = `btn-upg-${idx}`;
@@ -636,6 +682,7 @@
                         currentEngine = idx;
                         logEvent(`[업그레이드 완료]: ${eng.name} 장착. 최고 속도 한계가 증가합니다.`, 'text-yellow-300');
                         buildUpgrades(); // Re-render to update states
+                        GamePersistence.save();
                     }
                 };
                 container.appendChild(btn);
@@ -659,59 +706,51 @@
         }
 
         function drawGame() {
-            const shipX = cw * 0.2; // 우주선 x 위치
-
-            // Star의 draw 메서드에 shipX와 STATE.speed를 전달
-            stars.forEach(s => s.draw(ctx, shipX, STATE.speed));
-            // Clear with slight trailing effect for motion blur
+            const shipX = cw * 0.2;
+            const pY = (ch / 2) + (STATE.playerY * ch / 2);
+        
+            // 1. 배경 초기화 (이게 먼저 와야 합니다)
             ctx.fillStyle = `rgba(0, 0, 0, ${STATE.speed > 0.5 ? 0.2 : 0.8})`;
             ctx.fillRect(0, 0, cw, ch);
-
-            // Draw Stars
+        
+            // 2. 별 그리기
             stars.forEach(s => s.draw(ctx, shipX, STATE.speed));
-
-            // Draw Celestial Objects
+        
+            // 3. 천체 및 파티클
             celestialObjects.forEach(obj => obj.draw(ctx));
-
-            // Draw Particles
             particles.forEach(p => p.draw(ctx));
-
-            // Draw Player Ship (Abstract geometric shape)
-            let pX = cw * 0.2;
-            let pY = (ch / 2) + (STATE.playerY * ch / 2);
-            
+        
+            // 4. 우주선 그리기
             ctx.save();
-            ctx.translate(pX, pY);
+            ctx.translate(shipX, pY);
             
-            // Add jitter if speeding fast
             if(STATE.speed > 0.8) {
-                ctx.translate((Math.random()-0.5)*2, (Math.random()-0.5)*2);
+                ctx.translate((Math.random()-0.5)*5, (Math.random()-0.5)*5);
             }
-
-            // Ship Body
+        
+            // 선체 (White)
             ctx.fillStyle = '#fff';
             ctx.beginPath();
-            ctx.moveTo(20, 0); // nose
-            ctx.lineTo(-10, -10); // top wing
-            ctx.lineTo(-5, 0); // back
-            ctx.lineTo(-10, 10); // bottom wing
+            ctx.moveTo(25, 0); 
+            ctx.lineTo(-15, -12); 
+            ctx.lineTo(-8, 0); 
+            ctx.lineTo(-15, 12); 
             ctx.closePath();
             ctx.fill();
             
-            // Engine Glow
+            // 엔진 빛
             if(STATE.isThrusting) {
                 let engine = ENGINES[currentEngine];
-                ctx.shadowBlur = 15;
+                ctx.shadowBlur = 20;
                 ctx.shadowColor = engine.color;
                 ctx.fillStyle = engine.color;
                 ctx.beginPath();
-                ctx.arc(-8, 0, 4 + Math.random()*2, 0, Math.PI*2);
+                ctx.arc(-10, 0, 6 + Math.random()*4, 0, Math.PI*2);
                 ctx.fill();
             }
-
             ctx.restore();
         }
-
+        
         function triggerEnding() {
             STATE.isRunning = false;
             document.getElementById('ui-layer').style.display = 'none';
@@ -814,24 +853,52 @@
             }
         }
 
-        // Boot Sequence
+// --- 1. 자동 저장 타이머 ---
+        setInterval(() => {
+            if (typeof STATE !== 'undefined' && STATE.isRunning && typeof GamePersistence !== 'undefined') {
+                GamePersistence.save();
+                console.log("항해 데이터 자동 저장 완료.");
+            }
+        }, 5000); 
+// 자동 저장 타이머
+setInterval(() => {
+    if (STATE.isRunning && typeof GamePersistence !== 'undefined') {
+        GamePersistence.save();
+    }
+}, 5000);
+
+// 통합 초기화 실행
         function init() {
             resizeCanvas();
+            
+            // 별 생성
+            stars = []; 
             for(let i=0; i<NUM_STARS; i++) stars.push(new Star());
+            
+            // 데이터 로드
+            let isLoaded = GamePersistence.load();
+        
+            // 시스템 초기화
             buildUpgrades();
             initChart();
-            
-            logEvent("관측 가능한 우주 경계 탈출 프로토콜 시작.");
-            logEvent("스페이스바(또는 터치)를 길게 눌러 가속하십시오.", "text-yellow-400 font-bold");
-            
-            document.getElementById('ui-stage').innerText = STAGES[0].name.split(':')[1].trim();
-
-            gameLoop();
+        
+            if (isLoaded) {
+                logEvent("항해 데이터를 복구했습니다.", "text-blue-400");
+            } else {
+                logEvent("우주 경계 탈출 프로토콜 시작.");
+                logEvent("스페이스바를 눌러 가속하세요!", "text-yellow-400 font-bold");
+            }
+        
+            // UI 반영
+            const currentStage = STAGES[STATE.stageIndex];
+            document.getElementById('ui-stage').innerText = currentStage.name.split(':')[1].trim();
+        
+            // 루프 시작
+            requestAnimationFrame(gameLoop);
         }
-
-        // Start
+        
         window.onload = init;
-
+    
     </script>
 </body>
 </html>
